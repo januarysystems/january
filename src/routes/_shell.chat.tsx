@@ -26,8 +26,7 @@ import { AICore } from "@/components/january/AICore";
 import { AppShell, AmberButton, GhostButton } from "@/components/january/AppShell";
 import { MetricBar, Panel, PanelHeader, QuickActionGrid } from "@/components/january/primitives";
 import { coreStateManager } from "@/lib/ai/core-state-manager";
-import { januaryAIService } from "@/lib/ai/january-ai-service";
-import { ollamaService } from "@/lib/ai/ollama-service";
+import { simpleAIService } from "@/lib/ai/simple-ai-service";
 import { voiceService } from "@/lib/ai/voice-service";
 import { createSession, deleteSession, listMessages, listSessions, sendMessage, type ChatMessage, type ChatSession } from "@/lib/api";
 
@@ -93,8 +92,8 @@ function ChatPage() {
     const initAI = async () => {
       console.log("[CHAT-DEBUG] Initializing JANUARY AI service (Ollama)...");
       try {
-        await januaryAIService.initialize();
-        const health = await januaryAIService.getHealthStatus();
+        await simpleAIService.initialize();
+        const health = await simpleAIService.getHealthStatus();
 
         if (mounted) {
           setOllamaStatus({
@@ -104,17 +103,10 @@ function ChatPage() {
             error: health.error || '',
           });
 
-          if (health.running && health.modelInstalled) {
-            setAiReady(true);
-            setAiInitializing(false);
-            console.log("[CHAT-DEBUG] JANUARY AI service ready");
-          } else if (!health.running) {
-            setAiInitializing(false);
-            setError("Ollama is not running. Please start Ollama and refresh.");
-          } else if (!health.modelInstalled) {
-            setAiInitializing(false);
-            setError(`Model "${health.currentModel}" is not installed. Run: ollama pull ${health.currentModel}`);
-          }
+          // Simple AI service is always ready
+          setAiReady(true);
+          setAiInitializing(false);
+          console.log("[CHAT-DEBUG] JANUARY AI service ready");
         }
       } catch (error) {
         console.error("[CHAT-DEBUG] Failed to initialize JANUARY AI service:", error);
@@ -183,14 +175,8 @@ function ChatPage() {
 
   // Get appropriate AI error message
   const getAIErrorMessage = useCallback(() => {
-    if (!ollamaStatus.running) {
-      return "Ollama is not running. Please start Ollama and refresh.";
-    }
-    if (!ollamaStatus.modelInstalled) {
-      return `Model "${ollamaStatus.currentModel}" is not installed. Run: ollama pull ${ollamaStatus.currentModel}`;
-    }
-    return "AI service is not available. Please check Ollama.";
-  }, [ollamaStatus]);
+    return "AI service is not available. Please try again.";
+  }, []);
 
   // Send message with AI response
   const sendMessageWithAI = useCallback(async (content: string) => {
@@ -271,7 +257,7 @@ function ChatPage() {
       console.log("[CHAT-DEBUG] Conversation history count:", aiMessages.length);
 
       // Call JANUARY AI service
-      const response = await januaryAIService.generateResponse(content, {
+      const response = await simpleAIService.generateResponse(content, {
         conversationId: sessionId,
         messages: aiMessages
       }, {
@@ -617,7 +603,7 @@ function ChatRail() {
     initialized: false,
     ollamaRunning: false,
     modelInstalled: false,
-    currentModel: ollamaService.getDefaultModel(),
+    currentModel: 'january-ai',
   });
 
   useEffect(() => {
@@ -631,7 +617,7 @@ function ChatRail() {
   // Check AI service status
   useEffect(() => {
     const checkAIStatus = async () => {
-      const state = await januaryAIService.getState();
+      const state = await simpleAIService.getState();
       setAiStatus({
         initialized: state.initialized,
         ollamaRunning: state.ollamaRunning,

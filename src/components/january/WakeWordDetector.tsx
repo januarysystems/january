@@ -74,12 +74,18 @@ export function WakeWordDetector({ onResponse }: WakeWordDetectorProps) {
 
   const startWakeWordDetection = async () => {
     console.log('[WakeWordUI] Starting wake word detection...');
-    const started = await wakeWordService.start();
-    if (started) {
-      setIsActive(true);
-      console.log('[WakeWordUI] Wake word detection active');
-    } else {
-      setError("Failed to start wake word detection");
+    try {
+      const started = await wakeWordService.start();
+      if (started) {
+        setIsActive(true);
+        setError(null);
+        console.log('[WakeWordUI] Wake word detection active');
+      } else {
+        setError("Failed to start wake word detection - browser may not support speech recognition");
+      }
+    } catch (err) {
+      console.error('[WakeWordUI] Error starting detection:', err);
+      setError("Error starting wake word detection");
     }
   };
 
@@ -122,18 +128,22 @@ export function WakeWordDetector({ onResponse }: WakeWordDetectorProps) {
     coreStateManager.stopListening();
     coreStateManager.startSpeaking();
 
+    console.log('[WakeWordUI] Attempting to speak:', responseMessage);
+    console.log('[WakeWordUI] Voice service available:', voiceService.isAvailable());
+
     // Speak the response
     voiceService.speak(responseMessage, {
       onStart: () => {
-        console.log('[WakeWordUI] Started speaking response');
+        console.log('[WakeWordUI] ✅ Started speaking response');
       },
       onEnd: () => {
-        console.log('[WakeWordUI] Finished speaking response');
+        console.log('[WakeWordUI] ✅ Finished speaking response');
         coreStateManager.stopSpeaking(true);
         onResponse?.(responseMessage);
       },
       onError: (error) => {
-        console.error('[WakeWordUI] TTS error:', error);
+        console.error('[WakeWordUI] ❌ TTS error:', error);
+        setError(`Voice error: ${error}`);
         coreStateManager.stopSpeaking(true);
       },
     });
@@ -190,10 +200,55 @@ export function WakeWordDetector({ onResponse }: WakeWordDetectorProps) {
 
   const handleRecognitionError = (error: string) => {
     console.error('[WakeWordUI] Recognition error:', error);
-    setError(error);
+    // Don't set error for "no-speech" as it's normal during continuous listening
+    if (error !== 'no-speech' && error !== 'aborted') {
+      setError(error);
+    }
   };
 
   const toggleWakeWord = async () => {
+    if (isActive) {
+      wakeWordService.stop();
+      setIsActive(false);
+      setError(null);
+    } else {
+      await startWakeWordDetection();
+    }
+  };
+
+  const testVoice = () => {
+    console.log('[WakeWordUI] Testing voice service...');
+    voiceService.speak("Voice test successful. I am January.", {
+      onStart: () => {
+        console.log('[WakeWordUI] ✅ Test speech started');
+        setJustResponded(true);
+        setTimeout(() => setJustResponded(false), 2000);
+      },
+      onEnd: () => {
+        console.log('[WakeWordUI] ✅ Test speech ended');
+      },
+      onError: (error) => {
+        console.error('[WakeWordUI] ❌ Test speech error:', error);
+        setError(`Voice test failed: ${error}`);
+      },
+    });
+  };
+
+  const testMicrophone = async () => {
+    console.log('[WakeWordUI] Testing microphone...');
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('[WakeWordUI] ✅ Microphone access granted');
+      stream.getTracks().forEach(track => track.stop());
+
+      // Show success feedback
+      setJustResponded(true);
+      setTimeout(() => setJustResponded(false), 1500);
+    } catch (error) {
+      console.error('[WakeWordUI] ❌ Microphone access denied:', error);
+      setError('Microphone access denied. Please allow microphone access.');
+    }
+  };
     if (isActive) {
       wakeWordService.stop();
       setIsActive(false);
@@ -264,6 +319,24 @@ export function WakeWordDetector({ onResponse }: WakeWordDetectorProps) {
               <p className="text-[10px] text-muted-foreground">Inactive</p>
             )}
           </div>
+        </div>
+
+        {/* Test buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={testMicrophone}
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-hairline bg-secondary/40 px-3 text-[10px] text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-amber"
+            title="Test microphone access"
+          >
+            Test Mic
+          </button>
+          <button
+            onClick={testVoice}
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-hairline bg-secondary/40 px-3 text-[10px] text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-amber"
+            title="Test voice output"
+          >
+            Test Voice
+          </button>
         </div>
 
         {/* Toggle button */}
