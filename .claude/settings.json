@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(git restore *)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(sleep 10 && tail -100 /tmp/build_log 2>/dev/null || echo \"Build continuing...\")",
+      "Read(//tmp/**)",
+      "Bash(pkill -f \"vite.*dev\")"
+    ]
+  }
+}

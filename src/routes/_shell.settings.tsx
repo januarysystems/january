@@ -1,22 +1,19 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import {
-  Bell,
-  Cpu,
+  Check,
   Globe,
-  KeyRound,
+  Loader2,
   Mic,
-  Monitor,
-  Palette,
-  Shield,
   Sparkles,
-  User,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AmberButton, AppShell, GhostButton, PageHeader } from "@/components/january/AppShell";
 import { KeyValueList } from "@/components/january/cards";
 import { Chip, MetricBar, Panel, PanelHeader } from "@/components/january/primitives";
 import { cn } from "@/lib/utils";
+import { getSettings, updateSettings } from "@/lib/api";
 
 export const Route = createFileRoute("/_shell/settings")({
   head: () => ({
@@ -29,30 +26,21 @@ export const Route = createFileRoute("/_shell/settings")({
       },
       { property: "og:title", content: "Settings — JANUARY" },
       {
-        property: "og:description",
-        content: "Appearance, assistant, voice, notifications, privacy and integration settings.",
-      },
+        property: "og:description", content: "Appearance, assistant, voice, notifications, privacy and integration settings." },
     ],
   }),
   component: SettingsPage,
 });
 
 const SECTIONS = [
-  { id: "general", label: "General", icon: Monitor },
-  { id: "appearance", label: "Appearance", icon: Palette },
   { id: "assistant", label: "Assistant", icon: Sparkles },
-  { id: "voice", label: "Voice & Speech", icon: Mic },
-  { id: "notifications", label: "Notifications", icon: Bell },
-  { id: "privacy", label: "Privacy & Security", icon: Shield },
-  { id: "api", label: "API Keys", icon: KeyRound },
-  { id: "account", label: "Account", icon: User },
+  { id: "voice", label: "Voice", icon: Mic },
 ];
 
-function Toggle({ label, hint, on = true }: { label: string; hint?: string; on?: boolean }) {
-  const [checked, setChecked] = useState(on);
+function Toggle({ label, hint, value, onChange }: { label: string; hint?: string; value: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
-      onClick={() => setChecked((c) => !c)}
+      onClick={() => onChange(!value)}
       className="flex w-full items-center gap-3 rounded-lg border border-hairline bg-secondary/30 px-3 py-2.5 text-left hover:border-amber/30"
     >
       <span className="min-w-0 flex-1">
@@ -64,7 +52,7 @@ function Toggle({ label, hint, on = true }: { label: string; hint?: string; on?:
       <span
         className={cn(
           "flex h-5 w-9 shrink-0 items-center rounded-full border px-0.5 transition-colors",
-          checked
+          value
             ? "justify-end border-amber/50 bg-accent/60"
             : "justify-start border-hairline bg-secondary/60",
         )}
@@ -72,7 +60,7 @@ function Toggle({ label, hint, on = true }: { label: string; hint?: string; on?:
         <span
           className={cn(
             "size-3.5 rounded-full",
-            checked ? "amber-gradient" : "bg-muted-foreground/50",
+            value ? "amber-gradient" : "bg-muted-foreground/50",
           )}
         />
       </span>
@@ -80,12 +68,26 @@ function Toggle({ label, hint, on = true }: { label: string; hint?: string; on?:
   );
 }
 
-function Field({ label, value, options }: { label: string; value: string; options?: string[] }) {
+function Field({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options?: string[];
+  onChange?: (v: string) => void;
+}) {
   return (
     <label className="block">
       <span className="mb-1 block text-[11px] text-muted-foreground">{label}</span>
       {options ? (
-        <select className="h-9 w-full rounded-lg border border-hairline bg-secondary/40 px-2.5 text-[12px] text-foreground outline-none focus:border-amber/40">
+        <select
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
+          className="h-9 w-full rounded-lg border border-hairline bg-secondary/40 px-2.5 text-[12px] text-foreground outline-none focus:border-amber/40"
+        >
           {options.map((o) => (
             <option key={o} className="bg-card">
               {o}
@@ -94,7 +96,8 @@ function Field({ label, value, options }: { label: string; value: string; option
         </select>
       ) : (
         <input
-          defaultValue={value}
+          value={value}
+          onChange={(e) => onChange?.(e.target.value)}
           className="h-9 w-full rounded-lg border border-hairline bg-secondary/40 px-2.5 text-[12px] text-foreground outline-none focus:border-amber/40"
         />
       )}
@@ -103,7 +106,52 @@ function Field({ label, value, options }: { label: string; value: string; option
 }
 
 function SettingsPage() {
+  const queryClient = useQueryClient();
   const [active, setActive] = useState("general");
+  const [saved, setSaved] = useState(false);
+
+  const { data: settings, isLoading } = useQuery({
+    queryKey: ["settings"],
+    queryFn: getSettings,
+  });
+
+  const [localSettings, setLocalSettings] = useState({
+    theme: "dark",
+    language: "en",
+    voice_enabled: true,
+    notifications_enabled: true,
+  });
+
+  const save = useMutation({
+    mutationFn: () => updateSettings(localSettings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    },
+  });
+
+  useEffect(() => {
+    if (settings) {
+      setLocalSettings({
+        theme: settings.theme || "dark",
+        language: settings.language || "en",
+        voice_enabled: settings.voice_enabled ?? true,
+        notifications_enabled: settings.notifications_enabled ?? true,
+      });
+    }
+  }, [settings]);
+
+  const handleReset = () => {
+    if (settings) {
+      setLocalSettings({
+        theme: settings.theme || "dark",
+        language: settings.language || "en",
+        voice_enabled: settings.voice_enabled ?? true,
+        notifications_enabled: settings.notifications_enabled ?? true,
+      });
+    }
+  };
 
   return (
     <AppShell promptPlaceholder="Ask January to change a setting..." rightPanel={<SettingsRail />}>
@@ -112,8 +160,15 @@ function SettingsPage() {
         subtitle="Configure how January looks, thinks and responds"
         actions={
           <>
-            <GhostButton>Reset</GhostButton>
-            <AmberButton>Save Changes</AmberButton>
+            <GhostButton onClick={handleReset}>Reset</GhostButton>
+            <AmberButton onClick={() => save.mutate()} disabled={save.isPending}>
+              {save.isPending ? <Loader2 className="size-3.5 animate-spin" /> : null} Save Changes
+            </AmberButton>
+            {saved ? (
+              <span className="flex items-center gap-1 text-[11px] text-ok">
+                <Check className="size-3.5" /> Saved
+              </span>
+            ) : null}
           </>
         }
       />
@@ -141,51 +196,18 @@ function SettingsPage() {
 
         <div className="min-w-0 flex-1 space-y-3">
           <Panel>
-            <PanelHeader title="General" icon={Monitor} />
-            <div className="grid gap-3 p-3 sm:grid-cols-2">
-              <Field label="Display Name" value="Ashwin" />
-              <Field
-                label="Language"
-                value="English"
-                options={["English", "Tamil", "Hindi", "German"]}
-              />
-              <Field
-                label="Timezone"
-                value="GMT+5:30"
-                options={["GMT+5:30", "UTC", "GMT+1", "GMT-5"]}
-              />
-              <Field label="Startup Page" value="Home" options={["Home", "Chat", "Projects"]} />
-            </div>
-          </Panel>
-
-          <Panel>
-            <PanelHeader title="Appearance" icon={Palette} />
-            <div className="space-y-2 p-3">
-              <div className="flex flex-wrap gap-1.5">
-                <Chip tone="amber">Liquid Glass (Dark)</Chip>
-                <Chip>Midnight</Chip>
-                <Chip>Carbon</Chip>
-              </div>
-              <Toggle label="Glass blur effects" hint="Translucent panels and depth" />
-              <Toggle label="Motion & animations" hint="Smooth transitions across the app" />
-              <Toggle label="Compact density" hint="Reduce padding across panels" on={false} />
-            </div>
-          </Panel>
-
-          <Panel>
             <PanelHeader title="Assistant" icon={Sparkles} />
             <div className="space-y-2 p-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Default Model" value="None" options={["None"]} />
-                <Field
-                  label="Response Style"
-                  value="Technical"
-                  options={["Technical", "Concise", "Friendly"]}
-                />
+              <div className="rounded-lg bg-amber/10 border border-amber/30 p-4 text-center">
+                <Sparkles className="mx-auto mb-2 size-8 text-amber" />
+                <p className="text-[12px] font-medium text-foreground">JANUARY AI Assistant</p>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Powered by Puter AI (GPT-5.4-nano) - No API key required
+                </p>
+                <div className="mt-3 text-[10px] text-muted-foreground">
+                  Configure models in <span className="text-amber">Settings → AI Models</span>
+                </div>
               </div>
-              <Toggle label="Long-term memory" hint="Remember facts across sessions" />
-              <Toggle label="Web search" hint="Allow January to browse for fresh data" />
-              <Toggle label="Auto-cite documents" hint="Reference source files in answers" />
             </div>
           </Panel>
 
@@ -193,29 +215,21 @@ function SettingsPage() {
             <PanelHeader title="Voice & Notifications" icon={Mic} />
             <div className="space-y-2 p-3">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field
-                  label="Voice"
-                  value="January (Neutral)"
-                  options={["January (Neutral)", "Warm", "Crisp"]}
-                />
-                <Field label="Wake Word" value="Hey January" />
+                <Field label="Voice Gender" value="Female (Default)" options={["Female (Default)", "Male", "Neutral"]} />
+                <Field label="Language" value={localSettings.language === "en" ? "English" : localSettings.language.charAt(0).toUpperCase() + localSettings.language.slice(1)} options={["English", "Tamil", "Hindi", "German", "Spanish", "French"]} />
               </div>
-              <Toggle label="Voice replies" hint="Speak responses out loud" />
-              <Toggle label="Desktop notifications" hint="Alerts for automations and devices" />
-              <Toggle label="Sound effects" hint="Subtle interface feedback" on={false} />
-            </div>
-          </Panel>
-
-          <Panel>
-            <PanelHeader title="Privacy & Security" icon={Shield} />
-            <div className="space-y-2 p-3">
-              <Toggle label="Two-factor authentication" hint="Extra layer of account security" />
               <Toggle
-                label="Local-only processing"
-                hint="Keep sensitive data on device"
-                on={false}
+                label="Voice replies"
+                hint="JANUARY speaks responses out loud with female voice"
+                value={localSettings.voice_enabled}
+                onChange={(v) => setLocalSettings({ ...localSettings, voice_enabled: v })}
               />
-              <Toggle label="Usage analytics" hint="Help improve January" on={false} />
+              <Toggle
+                label="Desktop notifications"
+                hint="Alerts for automations and devices"
+                value={localSettings.notifications_enabled}
+                onChange={(v) => setLocalSettings({ ...localSettings, notifications_enabled: v })}
+              />
             </div>
           </Panel>
         </div>
@@ -228,10 +242,11 @@ function SettingsRail() {
   return (
     <>
       <Panel>
-        <PanelHeader title="System" icon={Cpu} />
-        <div className="p-3 text-[11px] text-muted-foreground">
-          <p>System metrics are not available in cleanup mode.</p>
-          <p>Live CPU, memory and storage data will appear here once connected.</p>
+        <PanelHeader title="AI Status" icon={Sparkles} />
+        <div className="space-y-2 p-3 text-[11px] text-muted-foreground">
+          <p className="text-amber">Puter AI: Ready</p>
+          <p>Model: GPT-5.4-nano</p>
+          <p className="text-[10px] mt-1">Powered by puter.com</p>
         </div>
       </Panel>
 
@@ -240,21 +255,12 @@ function SettingsRail() {
         <div className="p-3">
           <KeyValueList
             rows={[
-              ["Version", "—"],
-              ["Channel", "—"],
-              ["Runtime", "—"],
-              ["Region", "—"],
-              ["Last Sync", "—"],
+              ["Version", "1.0.0"],
+              ["Channel", "stable"],
+              ["Runtime", "browser"],
+              ["Last Sync", new Date().toLocaleDateString()],
             ]}
           />
-        </div>
-      </Panel>
-
-      <Panel>
-        <PanelHeader title="Connected Keys" icon={KeyRound} action="Manage" />
-        <div className="p-3 text-[11px] text-muted-foreground">
-          <p>No API keys are connected.</p>
-          <p>Connect keys to enable third-party models and services.</p>
         </div>
       </Panel>
     </>

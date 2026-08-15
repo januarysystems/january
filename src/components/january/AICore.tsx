@@ -97,7 +97,7 @@ export function Waveform({
           className="w-[2px] rounded-full bg-amber/70"
           animate={{ height: ["20%", `${30 + ((i * 37) % 70)}%`, "20%"] }}
           transition={{
-            duration: 1.1 + ((i % 5) * 0.12),
+            duration: 1.1 + (i % 5) * 0.12,
             repeat: Infinity,
             ease: "easeInOut",
             delay: (reverse ? bars - i : i) * 0.04,

@@ -19,6 +19,7 @@ import { Route as ShellAiModelsRouteImport } from './routes/_shell.ai-models'
 import { Route as ShellAutomationsRouteImport } from './routes/_shell.automations'
 import { Route as ShellChatRouteImport } from './routes/_shell.chat'
 import { Route as ShellDashboardRouteImport } from './routes/_shell.dashboard'
+import { Route as ShellDebugAiRouteImport } from './routes/_shell.debug-ai'
 import { Route as ShellDocumentsRouteImport } from './routes/_shell.documents'
 import { Route as ShellIotRoboticsRouteImport } from './routes/_shell.iot-robotics'
 import { Route as ShellMemoryRouteImport } from './routes/_shell.memory'
@@ -77,6 +78,11 @@ const ShellDashboardRoute = ShellDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => ShellRoute,
 } as any)
+const ShellDebugAiRoute = ShellDebugAiRouteImport.update({
+  id: '/debug-ai',
+  path: '/debug-ai',
+  getParentRoute: () => ShellRoute,
+} as any)
 const ShellDocumentsRoute = ShellDocumentsRouteImport.update({
   id: '/documents',
   path: '/documents',
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/automations': typeof ShellAutomationsRoute
   '/chat': typeof ShellChatRoute
   '/dashboard': typeof ShellDashboardRoute
+  '/debug-ai': typeof ShellDebugAiRoute
   '/documents': typeof ShellDocumentsRoute
   '/iot-robotics': typeof ShellIotRoboticsRoute
   '/memory': typeof ShellMemoryRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/automations': typeof ShellAutomationsRoute
   '/chat': typeof ShellChatRoute
   '/dashboard': typeof ShellDashboardRoute
+  '/debug-ai': typeof ShellDebugAiRoute
   '/documents': typeof ShellDocumentsRoute
   '/iot-robotics': typeof ShellIotRoboticsRoute
   '/memory': typeof ShellMemoryRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/_shell/automations': typeof ShellAutomationsRoute
   '/_shell/chat': typeof ShellChatRoute
   '/_shell/dashboard': typeof ShellDashboardRoute
+  '/_shell/debug-ai': typeof ShellDebugAiRoute
   '/_shell/documents': typeof ShellDocumentsRoute
   '/_shell/iot-robotics': typeof ShellIotRoboticsRoute
   '/_shell/memory': typeof ShellMemoryRoute
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/automations'
     | '/chat'
     | '/dashboard'
+    | '/debug-ai'
     | '/documents'
     | '/iot-robotics'
     | '/memory'
@@ -208,6 +218,7 @@ export interface FileRouteTypes {
     | '/automations'
     | '/chat'
     | '/dashboard'
+    | '/debug-ai'
     | '/documents'
     | '/iot-robotics'
     | '/memory'
@@ -228,6 +239,7 @@ export interface FileRouteTypes {
     | '/_shell/automations'
     | '/_shell/chat'
     | '/_shell/dashboard'
+    | '/_shell/debug-ai'
     | '/_shell/documents'
     | '/_shell/iot-robotics'
     | '/_shell/memory'
@@ -318,6 +330,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShellDashboardRouteImport
       parentRoute: typeof ShellRoute
     }
+    '/_shell/debug-ai': {
+      id: '/_shell/debug-ai'
+      path: '/debug-ai'
+      fullPath: '/debug-ai'
+      preLoaderRoute: typeof ShellDebugAiRouteImport
+      parentRoute: typeof ShellRoute
+    }
     '/_shell/documents': {
       id: '/_shell/documents'
       path: '/documents'
@@ -383,6 +402,7 @@ interface ShellRouteChildren {
   ShellAutomationsRoute: typeof ShellAutomationsRoute
   ShellChatRoute: typeof ShellChatRoute
   ShellDashboardRoute: typeof ShellDashboardRoute
+  ShellDebugAiRoute: typeof ShellDebugAiRoute
   ShellDocumentsRoute: typeof ShellDocumentsRoute
   ShellIotRoboticsRoute: typeof ShellIotRoboticsRoute
   ShellMemoryRoute: typeof ShellMemoryRoute
@@ -399,6 +419,7 @@ const ShellRouteChildren: ShellRouteChildren = {
   ShellAutomationsRoute: ShellAutomationsRoute,
   ShellChatRoute: ShellChatRoute,
   ShellDashboardRoute: ShellDashboardRoute,
+  ShellDebugAiRoute: ShellDebugAiRoute,
   ShellDocumentsRoute: ShellDocumentsRoute,
   ShellIotRoboticsRoute: ShellIotRoboticsRoute,
   ShellMemoryRoute: ShellMemoryRoute,

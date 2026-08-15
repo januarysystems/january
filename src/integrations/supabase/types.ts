@@ -25,6 +25,11 @@ export type Database = {
           updated_at: string
           user_id: string
           version: string | null
+          description: string | null
+          api_key_encrypted: string | null
+          api_key_iv: string | null
+          api_key_tag: string | null
+          has_custom_key: boolean
         }
         Insert: {
           created_at?: string
@@ -36,6 +41,11 @@ export type Database = {
           updated_at?: string
           user_id: string
           version?: string | null
+          description?: string | null
+          api_key_encrypted?: string | null
+          api_key_iv?: string | null
+          api_key_tag?: string | null
+          has_custom_key?: boolean
         }
         Update: {
           created_at?: string
@@ -47,6 +57,11 @@ export type Database = {
           updated_at?: string
           user_id?: string
           version?: string | null
+          description?: string | null
+          api_key_encrypted?: string | null
+          api_key_iv?: string | null
+          api_key_tag?: string | null
+          has_custom_key?: boolean
         }
         Relationships: []
       }
@@ -349,6 +364,126 @@ export type Database = {
           updated_at?: string
           user_id?: string
           voice_enabled?: boolean
+        }
+        Relationships: []
+      }
+      simulations: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          project_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          project_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          project_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      iot_devices: {
+        Row: {
+          connection_config: string | null
+          connection_type: string | null
+          created_at: string
+          description: string | null
+          device_id: string | null
+          device_type: string
+          id: string
+          last_seen: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connection_config?: string | null
+          connection_type?: string | null
+          created_at?: string
+          description?: string | null
+          device_id?: string | null
+          device_type?: string
+          id?: string
+          last_seen?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connection_config?: string | null
+          connection_type?: string | null
+          created_at?: string
+          description?: string | null
+          device_id?: string | null
+          device_type?: string
+          id?: string
+          last_seen?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      assets_3d: {
+        Row: {
+          created_at: string
+          file_path: string
+          file_size: number
+          file_type: string
+          format_type: string | null
+          id: string
+          metadata: any | null
+          name: string
+          project_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          file_size?: number
+          file_type?: string
+          format_type?: string | null
+          id?: string
+          metadata?: any | null
+          name: string
+          project_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          file_size?: number
+          file_type?: string
+          format_type?: string | null
+          id?: string
+          metadata?: any | null
+          name?: string
+          project_id?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
