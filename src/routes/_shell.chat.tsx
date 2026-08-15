@@ -27,7 +27,7 @@ import { AppShell, AmberButton, GhostButton } from "@/components/january/AppShel
 import { MetricBar, Panel, PanelHeader, QuickActionGrid } from "@/components/january/primitives";
 import { coreStateManager } from "@/lib/ai/core-state-manager";
 import { januaryAIService } from "@/lib/ai/january-ai-service";
-import { PUTER_MODEL } from "@/lib/ai/puter-service";
+import { ollamaService } from "@/lib/ai/ollama-service";
 import { voiceService } from "@/lib/ai/voice-service";
 import { createSession, deleteSession, listMessages, listSessions, sendMessage, type ChatMessage, type ChatSession } from "@/lib/api";
 
@@ -66,8 +66,14 @@ function ChatPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamedContent, setStreamedContent] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [puterInitializing, setPuterInitializing] = useState(true);
-  const [puterReady, setPuterReady] = useState(false);
+  const [aiInitializing, setAiInitializing] = useState(true);
+  const [aiReady, setAiReady] = useState(false);
+  const [ollamaStatus, setOllamaStatus] = useState({
+    running: false,
+    modelInstalled: false,
+    currentModel: '',
+    error: '',
+  });
   const streamingAbortRef = useRef<AbortController | null>(null);
 
   // Subscribe to core state changes
@@ -80,29 +86,46 @@ function ChatPage() {
     return unsubscribe;
   }, []);
 
-  // Initialize JANUARY AI service (Puter) on mount
+  // Initialize JANUARY AI service (Ollama) on mount
   useEffect(() => {
     let mounted = true;
 
-    const initPuter = async () => {
-      console.log("[CHAT-DEBUG] Initializing JANUARY AI service (Puter)...");
+    const initAI = async () => {
+      console.log("[CHAT-DEBUG] Initializing JANUARY AI service (Ollama)...");
       try {
         await januaryAIService.initialize();
+        const health = await januaryAIService.getHealthStatus();
+
         if (mounted) {
-          setPuterReady(true);
-          setPuterInitializing(false);
-          console.log("[CHAT-DEBUG] JANUARY AI service ready");
+          setOllamaStatus({
+            running: health.running,
+            modelInstalled: health.modelInstalled,
+            currentModel: health.currentModel,
+            error: health.error || '',
+          });
+
+          if (health.running && health.modelInstalled) {
+            setAiReady(true);
+            setAiInitializing(false);
+            console.log("[CHAT-DEBUG] JANUARY AI service ready");
+          } else if (!health.running) {
+            setAiInitializing(false);
+            setError("Ollama is not running. Please start Ollama and refresh.");
+          } else if (!health.modelInstalled) {
+            setAiInitializing(false);
+            setError(`Model "${health.currentModel}" is not installed. Run: ollama pull ${health.currentModel}`);
+          }
         }
       } catch (error) {
         console.error("[CHAT-DEBUG] Failed to initialize JANUARY AI service:", error);
         if (mounted) {
-          setPuterInitializing(false);
-          setError("Failed to initialize AI service. Please refresh the page.");
+          setAiInitializing(false);
+          setError("Failed to initialize AI service. Please check Ollama.");
         }
       }
     };
 
-    initPuter();
+    initAI();
 
     return () => {
       mounted = false;
@@ -158,17 +181,28 @@ function ChatPage() {
     coreStateManager.reset();
   }, []);
 
+  // Get appropriate AI error message
+  const getAIErrorMessage = useCallback(() => {
+    if (!ollamaStatus.running) {
+      return "Ollama is not running. Please start Ollama and refresh.";
+    }
+    if (!ollamaStatus.modelInstalled) {
+      return `Model "${ollamaStatus.currentModel}" is not installed. Run: ollama pull ${ollamaStatus.currentModel}`;
+    }
+    return "AI service is not available. Please check Ollama.";
+  }, [ollamaStatus]);
+
   // Send message with AI response
   const sendMessageWithAI = useCallback(async (content: string) => {
     console.log("[CHAT-DEBUG] sendMessageWithAI called with:", content?.substring(0, 50));
     console.log("[CHAT-DEBUG] activeSessionId:", activeSessionId);
     console.log("[CHAT-DEBUG] isStreaming:", isStreaming);
-    console.log("[CHAT-DEBUG] puterReady:", puterReady);
+    console.log("[CHAT-DEBUG] aiReady:", aiReady);
 
-    // Check if Puter is ready
-    if (!puterReady) {
-      console.error("[CHAT-DEBUG] Puter AI service not ready");
-      setError(puterInitializing ? "AI service is initializing..." : "AI service is not available. Please refresh the page.");
+    // Check if AI is ready
+    if (!aiReady) {
+      console.error("[CHAT-DEBUG] AI service not ready");
+      setError(aiInitializing ? "AI service is initializing..." : getAIErrorMessage());
       return;
     }
 
@@ -301,7 +335,7 @@ function ChatPage() {
       voiceService.stop();
       setIsStreaming(false);
     }
-  }, [activeSessionId, isStreaming, messages, sendMessageMutation, queryClient, puterReady, puterInitializing]);
+  }, [activeSessionId, isStreaming, messages, sendMessageMutation, queryClient, aiReady, aiInitializing]);
 
   // Handle message from AppShell prompt bar
   useEffect(() => {
@@ -427,9 +461,9 @@ function ChatPage() {
 
           <div className="border-t border-hairline p-2 space-y-2">
             <div className="flex items-center justify-between rounded-md bg-secondary/20 px-2 py-1.5">
-              <span className="text-[10px] text-muted-foreground">Puter AI</span>
-              <span className={`text-[9px] ${puterReady ? 'text-amber' : puterInitializing ? 'text-yellow-600' : 'text-red-500'}`}>
-                {puterReady ? '● Ready' : puterInitializing ? '● Loading...' : '● Offline'}
+              <span className="text-[10px] text-muted-foreground">Local AI (Ollama)</span>
+              <span className={`text-[9px] ${aiReady ? 'text-amber' : aiInitializing ? 'text-yellow-600' : 'text-red-500'}`}>
+                {aiReady ? '● Ready' : aiInitializing ? '● Loading...' : '● Offline'}
               </span>
             </div>
             <button
@@ -484,16 +518,16 @@ function ChatPage() {
                   </p>
                 </div>
 
-                {/* Puter AI Status */}
-                {!puterReady && (
+                {/* Local AI Status */}
+                {!aiReady && (
                   <div className="mb-4 rounded-lg border border-amber/30 bg-amber/10 px-4 py-2">
                     <p className="text-[11px] text-amber">
-                      {puterInitializing ? "🔄 Initializing Puter AI..." : "⚠️ Puter AI not available. Please refresh the page."}
+                      {aiInitializing ? "🔄 Initializing Local AI..." : `⚠️ ${getAIErrorMessage()}`}
                     </p>
                   </div>
                 )}
 
-                <AmberButton onClick={() => createSessionMutation.mutate()} disabled={!puterReady}>
+                <AmberButton onClick={() => createSessionMutation.mutate()} disabled={!aiReady}>
                   <Plus className="size-3.5" /> New Conversation
                 </AmberButton>
               </div>
@@ -505,7 +539,7 @@ function ChatPage() {
                   <div className="flex justify-center">
                     <div className="max-w-[80%] rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-[11px] text-danger">
                       <p className="font-medium">Error: {error}</p>
-                      <p className="mt-1">Please try again or check your AI provider configuration in Settings.</p>
+                      <p className="mt-1">Please try again or check Ollama status.</p>
                     </div>
                   </div>
                 )}
@@ -581,8 +615,9 @@ function ChatRail() {
   const [coreState, setCoreState] = useState<string>("idle");
   const [aiStatus, setAiStatus] = useState({
     initialized: false,
-    ready: false,
-    model: PUTER_MODEL
+    ollamaRunning: false,
+    modelInstalled: false,
+    currentModel: ollamaService.getDefaultModel(),
   });
 
   useEffect(() => {
@@ -595,17 +630,18 @@ function ChatRail() {
 
   // Check AI service status
   useEffect(() => {
-    const checkAIStatus = () => {
-      const state = januaryAIService.getState();
+    const checkAIStatus = async () => {
+      const state = await januaryAIService.getState();
       setAiStatus({
         initialized: state.initialized,
-        ready: state.puterReady,
-        model: 'gpt-5.4-nano'
+        ollamaRunning: state.ollamaRunning,
+        modelInstalled: state.modelInstalled,
+        currentModel: state.currentModel,
       });
     };
 
     checkAIStatus();
-    const interval = setInterval(checkAIStatus, 1000);
+    const interval = setInterval(checkAIStatus, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -626,11 +662,17 @@ function ChatRail() {
             />
             <div className="flex items-center justify-between">
               <span>AI Engine</span>
-              <span className={aiStatus.ready ? "text-[10px] text-amber" : "text-[10px] text-muted-foreground"}>
-                {aiStatus.ready ? "Puter AI Ready" : "Initializing..."}
+              <span className={aiStatus.ollamaRunning && aiStatus.modelInstalled ? "text-[10px] text-amber" : "text-[10px] text-muted-foreground"}>
+                {aiStatus.ollamaRunning && aiStatus.modelInstalled ? "Ollama Ready" : "Offline"}
               </span>
             </div>
-            <p className="text-[10px]">Model: {aiStatus.model}</p>
+            <p className="text-[10px]">Model: {aiStatus.currentModel}</p>
+            <div className="flex items-center justify-between">
+              <span>Model Status</span>
+              <span className={aiStatus.modelInstalled ? "text-[10px] text-amber" : "text-[10px] text-red-500"}>
+                {aiStatus.modelInstalled ? "Installed" : "Not Installed"}
+              </span>
+            </div>
           </div>
         </div>
       </Panel>

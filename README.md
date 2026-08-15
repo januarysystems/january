@@ -706,3 +706,131 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+==========================================================
+LOCAL AI SETUP (PHASE 2)
+==========================================================
+
+JANUARY now runs with a completely local AI stack.
+
+COMPONENTS:
+• Local LLM: Ollama + Qwen3-Coder 30B
+• Local Speech-to-Text: Whisper (faster-whisper)
+• Local Text-to-Speech: Piper (Female Voice)
+
+SETUP STEPS:
+
+1. Install Ollama:
+   macOS: brew install ollama
+   Linux: curl -fsSL https://ollama.com/install.sh | sh
+   Windows: Download from https://ollama.com
+
+2. Start Ollama:
+   ollama serve
+
+3. Pull the model:
+   ollama pull qwen3-coder:30b
+
+4. Verify Ollama:
+   curl http://127.0.0.1:11434/api/tags
+
+5. Configure environment:
+   cp .env.local.example .env
+   # Edit .env with your settings
+
+6. Install Whisper (for voice input):
+   pip install faster-whisper
+   # Or use whisper.cpp
+
+7. Install Piper TTS (for female voice output):
+   pip install piper-tts
+
+8. Start JANUARY:
+   npm run dev
+
+9. Test in browser:
+   Open http://localhost:8080
+   Navigate to Chat
+   Type "Hello JANUARY"
+
+ENVIRONMENT VARIABLES:
+
+# Ollama (Local AI)
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=qwen3-coder:30b
+
+# Whisper (Speech-to-Text)
+WHISPER_HOST=127.0.0.1
+WHISPER_PORT=8080
+WHISPER_MODEL=base
+WHISPER_LANGUAGE=en
+
+# Piper (Text-to-Speech - Female Voice)
+TTS_ENGINE=piper
+TTS_HOST=127.0.0.1
+TTS_PORT=8081
+TTS_VOICE=en_US-amy-medium
+
+TESTING:
+
+TEXT CHAT:
+1. Open Chat page
+2. Type "Hello JANUARY"
+3. Expected: Real AI response from local Ollama
+4. Test conversation context:
+   - "My name is Ashwin."
+   - "What is my name?"
+   - Expected: "Ashwin"
+
+VOICE INPUT:
+1. Press microphone button
+2. Speak: "Hello JANUARY"
+3. Expected: Transcript appears, AI responds
+
+VOICE OUTPUT:
+1. Enable TTS in Settings
+2. Send any message
+3. Expected: JANUARY speaks with female voice
+
+3D CORE STATES:
+The 3D Core should transition:
+• IDLE → LISTENING → THINKING → SPEAKING → IDLE
+
+TROUBLESHOOTING:
+
+"Ollama is not running":
+→ Start Ollama: ollama serve
+
+"Model not installed":
+→ Pull model: ollama pull qwen3-coder:30b
+
+"Whisper unavailable":
+→ Install faster-whisper: pip install faster-whisper
+→ Check service is running on port 8080
+
+"TTS unavailable":
+→ Install Piper: pip install piper-tts
+→ Check service is running on port 8081
+→ Verify female voice is installed
+
+PRIVACY & SECURITY:
+
+• All AI processing happens locally
+• No data sent to cloud AI services
+• No API keys required
+• Ollama runs on your machine
+• Whisper and Piper run locally
+
+ARCHITECTURE:
+
+Frontend → JANUARY AI Service → Ollama → Qwen3-Coder 30B
+         ↓
+         Supabase (Chat persistence)
+         ↓
+         Local TTS (Piper - Female Voice)
+         ↓
+         Browser Audio Output
+
+Voice Input → Local Whisper → Transcript → AI → Response
+
+==========================================================

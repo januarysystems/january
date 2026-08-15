@@ -2,18 +2,18 @@
  * JANUARY AI Service
  *
  * Central AI service that provides JANUARY's personality and behavior.
- * Uses Puter AI for text generation.
+ * Uses local Ollama AI for text generation.
  *
  * This service:
  * - Manages JANUARY's system prompt and personality
  * - Handles conversation context building
  * - Normalizes AI responses
  * - Provides error handling
+ * - Integrates with local Ollama service
  */
 
 import type { AIMessage } from "./providers";
-import { puterService, PUTER_MODEL } from "./puter-service";
-import type { PuterMessage } from "./puter-service";
+import { ollamaService, type OllamaMessage } from "./ollama-service";
 
 export interface JanuaryAIContext {
   conversationId: string | null;
@@ -103,8 +103,8 @@ class JanuaryAIServicePrivate {
 
     console.log('[JanuaryAI] Initializing JANUARY AI Service...');
 
-    // Initialize Puter service
-    await puterService.initialize();
+    // Initialize Ollama service
+    await ollamaService.initialize();
 
     this.isInitialized = true;
     console.log('[JanuaryAI] JANUARY AI Service initialized');
@@ -132,26 +132,24 @@ class JanuaryAIServicePrivate {
         await this.initialize();
       }
 
-      // Build messages for Puter
+      // Build messages for Ollama
       const messages = this.buildMessages(userMessage, context);
 
       console.log('[JanuaryAI] Total messages for AI:', messages.length);
 
-      // Generate response using Puter
-      const puterResponse = await puterService.generateResponse(messages, {
-        model: PUTER_MODEL,
+      // Generate response using Ollama
+      const ollamaResponse = await ollamaService.generateResponse(messages, {
         temperature: options.temperature ?? 0.7,
-        maxTokens: options.maxTokens ?? 4096
       });
 
-      if (!puterResponse.success || !puterResponse.content) {
-        throw new Error('Failed to generate AI response');
+      if (!ollamaResponse.success || !ollamaResponse.content) {
+        throw new Error(ollamaResponse.error || 'Failed to generate AI response');
       }
 
-      console.log('[JanuaryAI] Response generated, length:', puterResponse.content.length);
+      console.log('[JanuaryAI] Response generated, length:', ollamaResponse.content.length);
 
       return {
-        content: puterResponse.content,
+        content: ollamaResponse.content,
         success: true
       };
     } catch (error) {
@@ -171,8 +169,8 @@ class JanuaryAIServicePrivate {
   private buildMessages(
     userMessage: string,
     context: JanuaryAIContext
-  ): PuterMessage[] {
-    const messages: PuterMessage[] = [];
+  ): OllamaMessage[] {
+    const messages: OllamaMessage[] = [];
 
     // Add JANUARY's system prompt
     messages.push({
@@ -204,18 +202,30 @@ class JanuaryAIServicePrivate {
    * Check if service is ready
    */
   isReady(): boolean {
-    return this.isInitialized && puterService.isReady();
+    return this.isInitialized && ollamaService.isReady();
   }
 
   /**
    * Get service state
    */
-  getState() {
+  async getState() {
+    const health = await ollamaService.checkHealth();
     return {
       initialized: this.isInitialized,
-      puterReady: puterService.isReady(),
-      puterState: puterService.getState()
+      ollamaReady: ollamaService.isReady(),
+      ollamaRunning: health.running,
+      modelInstalled: health.modelInstalled,
+      currentModel: health.currentModel,
+      baseUrl: ollamaService.getBaseUrl(),
+      defaultModel: ollamaService.getDefaultModel(),
     };
+  }
+
+  /**
+   * Get Ollama health status
+   */
+  async getHealthStatus() {
+    return await ollamaService.checkHealth();
   }
 }
 
