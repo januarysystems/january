@@ -20,8 +20,6 @@ dist-ssr
 .env
 .env.local
 .env.*.local
-.env.ai.example
-.env.local.example
 
 # Local AI service files
 *.ollama-models

@@ -725,35 +725,44 @@ SETUP STEPS:
    Linux: curl -fsSL https://ollama.com/install.sh | sh
    Windows: Download from https://ollama.com
 
-2. Start Ollama:
-   ollama serve
-
-3. Pull the model:
+2. Pull the model:
    ollama pull qwen3-coder:30b
 
-4. Verify Ollama:
-   curl http://127.0.0.1:11434/api/tags
-
-5. Configure environment:
+3. Configure environment:
    cp .env.local.example .env
    # Edit .env with your settings
 
-6. Install Whisper (for voice input):
-   pip install faster-whisper
-   # Or use whisper.cpp
-
-7. Install Piper TTS (for female voice output):
-   pip install piper-tts
-
-8. Start JANUARY:
+4. Start JANUARY:
    npm run dev
 
-9. Test in browser:
-   Open http://localhost:8080
-   Navigate to Chat
-   Type "Hello JANUARY"
+5. Open in browser:
+   http://localhost:8080
+
+AUTO-RUN FEATURE:
+
+JANUARY can automatically start Ollama when it launches!
+
+Enable auto-run in .env:
+AUTO_RUN_ENABLED=true
+AUTO_START_SERVICES=true
+AUTO_RUN_OLLAMA=true
+
+When you start JANUARY, it will:
+• Automatically detect if Ollama is running
+• Start Ollama if it's not running
+• Wait for Ollama to be ready
+• Display status in the Chat page
+
+No more manual `ollama serve` commands!
 
 ENVIRONMENT VARIABLES:
+
+# Auto-Run (Automatic Service Startup)
+AUTO_RUN_ENABLED=true
+AUTO_START_SERVICES=true
+AUTO_RUN_OLLAMA=true
+AUTO_RUN_WHISPER=false
+AUTO_RUN_PIPER=false
 
 # Ollama (Local AI)
 OLLAMA_BASE_URL=http://127.0.0.1:11434
