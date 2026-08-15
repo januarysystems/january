@@ -10,14 +10,63 @@
 // Puter global type declaration
 declare global {
   interface Window {
-    puter: any;
+    puter: PuterGlobal | undefined;
   }
+}
+
+/**
+ * Puter.js global interface
+ */
+interface PuterGlobal {
+  ai: {
+    chat: (messages: PuterChatMessage[], options?: PuterChatOptions) => Promise<PuterChatResponse>;
+  };
+}
+
+/**
+ * Puter chat message format
+ */
+interface PuterChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+/**
+ * Puter chat options
+ */
+interface PuterChatOptions {
+  model?: string;
+  stream?: boolean;
+  temperature?: number;
+  max_tokens?: number;
+}
+
+/**
+ * Puter chat response format
+ */
+interface PuterChatResponse {
+  message: {
+    content: string;
+    role: string;
+  };
+  model?: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
 
 export interface PuterMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
+
+/**
+ * Centralized Puter model identifier
+ * Update this in one place to change the model across the entire application
+ */
+export const PUTER_MODEL = 'openai/gpt-5.4-nano';
 
 export interface PuterResponse {
   content: string;
@@ -142,7 +191,7 @@ class PuterServicePrivate {
   /**
    * Generate AI response using Puter
    *
-   * @param messages - Conversation messages
+   * @param messages - Conversation messages including system prompt
    * @param options - Generation options
    * @returns AI response
    */
@@ -160,63 +209,80 @@ class PuterServicePrivate {
       throw new Error('Puter AI is not available. Please ensure Puter.js is loaded.');
     }
 
-    // Default options
-    const model = options.model || 'gpt-5.4-nano';
+    // Use centralized model identifier
+    const model = options.model || PUTER_MODEL;
 
     console.log('[PuterService] Generating response with model:', model);
-    console.log('[PuterService] Messages count:', messages.length);
+    console.log('[PuterService] Total messages:', messages.length);
+    console.log('[PuterService] Message roles:', messages.map(m => m.role).join(', '));
 
     try {
-      // Build conversation string for Puter
-      // Puter.ai.chat() takes the latest message and optional context
-      const lastMessage = messages[messages.length - 1];
-      if (!lastMessage || lastMessage.role !== 'user') {
-        throw new Error('Last message must be from user');
+      // Validate messages array
+      if (!messages || messages.length === 0) {
+        throw new Error('No messages provided to Puter AI');
       }
 
-      // Build conversation context from previous messages
-      const conversationContext = messages
-        .filter(m => m.role !== 'system')
-        .map(m => `${m.role}: ${m.content}`)
-        .join('\n\n');
-
-      console.log('[PuterService] User message:', lastMessage.content.substring(0, 100));
-
-      // Call Puter AI with simplified options
-      let response: string | undefined;
-      try {
-        // Try with model parameter first
-        response = await window.puter.ai.chat(lastMessage.content, {
-          model: model
-        });
-      } catch (modelError) {
-        console.warn('[PuterService] Model parameter failed, trying without:', modelError);
-        // Fallback: try without model parameter
-        response = await window.puter.ai.chat(lastMessage.content);
+      // Verify Puter AI is available
+      if (!window.puter?.ai?.chat) {
+        throw new Error('Puter AI chat function is not available');
       }
 
-      console.log('[PuterService] Response received, length:', response?.length || 0);
-      console.log('[PuterService] Response preview:', response?.substring(0, 100));
+      // Prepare Puter chat options
+      const chatOptions: PuterChatOptions = {
+        model: model,
+        stream: false, // Non-streaming for now
+      };
 
-      if (!response || typeof response !== 'string') {
-        throw new Error('Invalid response from Puter AI');
+      if (options.temperature !== undefined) {
+        chatOptions.temperature = options.temperature;
       }
+      if (options.maxTokens !== undefined) {
+        chatOptions.max_tokens = options.maxTokens;
+      }
+
+      console.log('[PuterService] Calling Puter AI with full message array...');
+
+      // Call Puter AI with the complete message array
+      // Puter supports the full messages array with system prompt and conversation history
+      const result = await window.puter.ai.chat(messages as PuterChatMessage[], chatOptions);
+
+      console.log('[PuterService] Response received from Puter');
+
+      // Extract content from Puter's response format
+      // Puter returns: { message: { content: string, role: string }, model?: string, ... }
+      const content = result?.message?.content;
+
+      if (!content || typeof content !== 'string') {
+        console.error('[PuterService] Invalid response structure:', result);
+        throw new Error('Puter returned an empty or invalid response');
+      }
+
+      console.log('[PuterService] Response content length:', content.length);
+      console.log('[PuterService] Response preview:', content.substring(0, 100));
 
       return {
-        content: response,
+        content: content,
         model: model,
         success: true
       };
     } catch (error) {
       console.error('[PuterService] Generation error:', error);
-      throw error;
+
+      // Provide specific error messages
+      if (error instanceof Error) {
+        throw error;
+      }
+
+      throw new Error('Puter AI request failed');
     }
   }
 
   /**
    * Simple chat without full message history
+   * Note: This method does not include the system prompt or conversation history
+   * For proper JANUARY responses, use generateResponse() instead
    */
-  async chat(message: string, model: string = 'gpt-5.4-nano'): Promise<string> {
+  async chat(message: string, model: string = PUTER_MODEL): Promise<string> {
     if (!this.isReady()) {
       await this.initialize();
     }
@@ -225,11 +291,20 @@ class PuterServicePrivate {
       throw new Error('Puter AI is not available');
     }
 
+    if (!window.puter?.ai?.chat) {
+      throw new Error('Puter AI chat function is not available');
+    }
+
     console.log('[PuterService] Simple chat:', message.substring(0, 100));
 
-    const response = await window.puter.ai.chat(message, { model });
+    const result = await window.puter.ai.chat([{ role: 'user', content: message }], { model });
 
-    return response;
+    const content = result?.message?.content;
+    if (!content || typeof content !== 'string') {
+      throw new Error('Puter returned an invalid response');
+    }
+
+    return content;
   }
 }
 

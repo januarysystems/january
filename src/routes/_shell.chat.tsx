@@ -27,6 +27,7 @@ import { AppShell, AmberButton, GhostButton } from "@/components/january/AppShel
 import { MetricBar, Panel, PanelHeader, QuickActionGrid } from "@/components/january/primitives";
 import { coreStateManager } from "@/lib/ai/core-state-manager";
 import { januaryAIService } from "@/lib/ai/january-ai-service";
+import { PUTER_MODEL } from "@/lib/ai/puter-service";
 import { voiceService } from "@/lib/ai/voice-service";
 import { createSession, deleteSession, listMessages, listSessions, sendMessage, type ChatMessage, type ChatSession } from "@/lib/api";
 
@@ -581,7 +582,7 @@ function ChatRail() {
   const [aiStatus, setAiStatus] = useState({
     initialized: false,
     ready: false,
-    model: 'gpt-5.4-nano'
+    model: PUTER_MODEL
   });
 
   useEffect(() => {

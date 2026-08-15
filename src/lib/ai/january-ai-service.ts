@@ -12,7 +12,7 @@
  */
 
 import type { AIMessage } from "./providers";
-import { puterService } from "./puter-service";
+import { puterService, PUTER_MODEL } from "./puter-service";
 import type { PuterMessage } from "./puter-service";
 
 export interface JanuaryAIContext {
@@ -139,7 +139,7 @@ class JanuaryAIServicePrivate {
 
       // Generate response using Puter
       const puterResponse = await puterService.generateResponse(messages, {
-        model: 'gpt-5.4-nano',
+        model: PUTER_MODEL,
         temperature: options.temperature ?? 0.7,
         maxTokens: options.maxTokens ?? 4096
       });
