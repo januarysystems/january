@@ -5,13 +5,14 @@ import {
   Globe,
   Loader2,
   Mic,
+  Palette,
   Sparkles,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AmberButton, AppShell, GhostButton, PageHeader } from "@/components/january/AppShell";
 import { KeyValueList } from "@/components/january/cards";
-import { Chip, MetricBar, Panel, PanelHeader } from "@/components/january/primitives";
+import { Panel, PanelHeader } from "@/components/january/primitives";
 import { cn } from "@/lib/utils";
 import { getSettings, updateSettings } from "@/lib/api";
 
@@ -33,6 +34,7 @@ export const Route = createFileRoute("/_shell/settings")({
 });
 
 const SECTIONS = [
+  { id: "appearance", label: "Appearance", icon: Palette },
   { id: "assistant", label: "Assistant", icon: Sparkles },
   { id: "voice", label: "Voice", icon: Mic },
 ];
@@ -107,7 +109,7 @@ function Field({
 
 function SettingsPage() {
   const queryClient = useQueryClient();
-  const [active, setActive] = useState("general");
+  const [active, setActive] = useState("appearance");
   const [saved, setSaved] = useState(false);
 
   const { data: settings, isLoading } = useQuery({
@@ -195,43 +197,66 @@ function SettingsPage() {
         </Panel>
 
         <div className="min-w-0 flex-1 space-y-3">
-          <Panel>
-            <PanelHeader title="Assistant" icon={Sparkles} />
-            <div className="space-y-2 p-3">
-              <div className="rounded-lg bg-amber/10 border border-amber/30 p-4 text-center">
-                <Sparkles className="mx-auto mb-2 size-8 text-amber" />
-                <p className="text-[12px] font-medium text-foreground">JANUARY AI Assistant</p>
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Powered by Puter AI (GPT-5.4-nano) - No API key required
-                </p>
-                <div className="mt-3 text-[10px] text-muted-foreground">
-                  Configure models in <span className="text-amber">Settings → AI Models</span>
+          {active === "appearance" && (
+            <Panel>
+              <PanelHeader title="Appearance" icon={Palette} />
+              <div className="space-y-2 p-3">
+                <Field
+                  label="Theme"
+                  value={localSettings.theme}
+                  options={["dark", "light", "system"]}
+                  onChange={(v) => setLocalSettings({ ...localSettings, theme: v })}
+                />
+                <div className="mt-2 rounded-lg bg-muted/10 border border-hairline p-3">
+                  <p className="text-[11px] text-muted-foreground">
+                    Choose how JANUARY looks. Changes apply immediately after saving.
+                  </p>
                 </div>
               </div>
-            </div>
-          </Panel>
+            </Panel>
+          )}
 
-          <Panel>
-            <PanelHeader title="Voice & Notifications" icon={Mic} />
-            <div className="space-y-2 p-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Voice Gender" value="Female (Default)" options={["Female (Default)", "Male", "Neutral"]} />
-                <Field label="Language" value={localSettings.language === "en" ? "English" : localSettings.language.charAt(0).toUpperCase() + localSettings.language.slice(1)} options={["English", "Tamil", "Hindi", "German", "Spanish", "French"]} />
+          {active === "assistant" && (
+            <Panel>
+              <PanelHeader title="Assistant" icon={Sparkles} />
+              <div className="space-y-2 p-3">
+                <div className="rounded-lg bg-amber/10 border border-amber/30 p-4 text-center">
+                  <Sparkles className="mx-auto mb-2 size-8 text-amber" />
+                  <p className="text-[12px] font-medium text-foreground">JANUARY AI Assistant</p>
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    Powered by Puter AI (GPT-5.4-nano) - No API key required
+                  </p>
+                  <div className="mt-3 text-[10px] text-muted-foreground">
+                    Configure models in <span className="text-amber">Settings → AI Models</span>
+                  </div>
+                </div>
               </div>
-              <Toggle
-                label="Voice replies"
-                hint="JANUARY speaks responses out loud with female voice"
-                value={localSettings.voice_enabled}
-                onChange={(v) => setLocalSettings({ ...localSettings, voice_enabled: v })}
-              />
-              <Toggle
-                label="Desktop notifications"
-                hint="Alerts for automations and devices"
-                value={localSettings.notifications_enabled}
-                onChange={(v) => setLocalSettings({ ...localSettings, notifications_enabled: v })}
-              />
-            </div>
-          </Panel>
+            </Panel>
+          )}
+
+          {active === "voice" && (
+            <Panel>
+              <PanelHeader title="Voice & Notifications" icon={Mic} />
+              <div className="space-y-2 p-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Voice Gender" value="Female (Default)" options={["Female (Default)", "Male", "Neutral"]} />
+                  <Field label="Language" value={localSettings.language === "en" ? "English" : localSettings.language.charAt(0).toUpperCase() + localSettings.language.slice(1)} options={["English", "Tamil", "Hindi", "German", "Spanish", "French"]} />
+                </div>
+                <Toggle
+                  label="Voice replies"
+                  hint="JANUARY speaks responses out loud with female voice"
+                  value={localSettings.voice_enabled}
+                  onChange={(v) => setLocalSettings({ ...localSettings, voice_enabled: v })}
+                />
+                <Toggle
+                  label="Desktop notifications"
+                  hint="Alerts for automations and devices"
+                  value={localSettings.notifications_enabled}
+                  onChange={(v) => setLocalSettings({ ...localSettings, notifications_enabled: v })}
+                />
+              </div>
+            </Panel>
+          )}
         </div>
       </div>
     </AppShell>
