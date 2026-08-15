@@ -12,8 +12,6 @@
  * Everything is bundled within the JANUARY application.
  */
 
-import { portableOllamaManager } from '../services/portable-ollama';
-
 export interface OllamaMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -84,7 +82,6 @@ class OllamaServicePrivate {
 
   /**
    * Initialize the service
-   * Now handles portable Ollama startup
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
@@ -94,21 +91,6 @@ class OllamaServicePrivate {
     console.log('[OllamaService] Initializing Ollama Service...');
     console.log('[OllamaService] Base URL:', this.baseUrl);
     console.log('[OllamaService] Default model:', this.defaultModel);
-
-    // Check if portable Ollama is installed
-    const isInstalled = portableOllamaManager.isInstalled();
-    console.log('[OllamaService] Portable Ollama installed:', isInstalled);
-
-    // Start portable Ollama if not running
-    if (isInstalled) {
-      const status = await portableOllamaManager.start();
-      console.log('[OllamaService] Portable Ollama started:', status.running);
-
-      if (status.running) {
-        // Update base URL to use portable Ollama
-        this.baseUrl = 'http://127.0.0.1:11434';
-      }
-    }
 
     // Check Ollama availability
     const health = await this.checkHealth();
