@@ -27,8 +27,6 @@ import {
 import { AICore, Waveform } from "@/components/january/AICore";
 import { AppShell } from "@/components/january/AppShell";
 import { WakeWordDetector } from "@/components/january/WakeWordDetector";
-import { PermissionRequester } from "@/components/january/PermissionRequester";
-import { ErrorBoundary } from "@/components/january/ErrorBoundary";
 import {
   ActivityRow,
   MetricBar,
@@ -90,7 +88,6 @@ const TOOLS = [
 
 function DashboardPage() {
   const [mounted, setMounted] = useState(false);
-  const [componentError, setComponentError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -129,33 +126,8 @@ function DashboardPage() {
   console.log('[Dashboard] Rendering with stats:', stats);
   console.log('[Dashboard] Loading state:', isLoading);
 
-  // Handle component errors
-  if (componentError) {
-    return (
-      <AppShell showPromptBar={false}>
-        <PermissionRequester autoRequest={false} showUI={false} />
-        <div className="flex h-full min-h-[560px] items-center justify-center">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">Dashboard Error: {componentError}</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 rounded-md bg-amber/10 px-4 py-2 text-amber hover:bg-amber/20"
-            >
-              Reload Page
-            </button>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
-
   return (
     <AppShell showPromptBar={false}>
-      {/* Permission Requester - with error boundary */}
-      <ErrorBoundary fallback={null}>
-        <PermissionRequester autoRequest={true} showUI={true} />
-      </ErrorBoundary>
-
       <div className="flex h-full min-h-[560px] gap-3">
 
         <Panel className="flex min-w-0 flex-1 flex-col p-4">
@@ -173,47 +145,13 @@ function DashboardPage() {
             )}
           </div>
 
-          {/* AI Core - with error boundary */}
-          <ErrorBoundary fallback={<div className="text-center text-muted-foreground">AI Core unavailable</div>}>
-            <AICore />
-          </ErrorBoundary>
+          {/* AI Core */}
+          <AICore />
 
-          {/* Wake Word Detector - with error boundary */}
+          {/* Wake Word Detector */}
           <div className="mt-6">
-            <ErrorBoundary fallback={null}>
-              <WakeWordDetector />
-            </ErrorBoundary>
+            <WakeWordDetector />
           </div>
-
-          {/* Stats Display */}
-          {!isLoading && (
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div className="glass-panel rounded-lg p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">Projects</p>
-                <p className="text-lg font-semibold text-amber">{stats.projects}</p>
-              </div>
-              <div className="glass-panel rounded-lg p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">Conversations</p>
-                <p className="text-lg font-semibold text-amber">{stats.conversations}</p>
-              </div>
-              <div className="glass-panel rounded-lg p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">Memories</p>
-                <p className="text-lg font-semibold text-amber">{stats.memories}</p>
-              </div>
-              <div className="glass-panel rounded-lg p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">Documents</p>
-                <p className="text-lg font-semibold text-amber">{stats.documents}</p>
-              </div>
-              <div className="glass-panel rounded-lg p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">Models</p>
-                <p className="text-lg font-semibold text-amber">{stats.models}</p>
-              </div>
-              <div className="glass-panel rounded-lg p-3 text-center">
-                <p className="text-[10px] text-muted-foreground">Automations</p>
-                <p className="text-lg font-semibold text-amber">{stats.automations}</p>
-              </div>
-            </div>
-          )}
         </Panel>
       </div>
     </AppShell>
