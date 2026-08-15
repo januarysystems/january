@@ -26,6 +26,17 @@ function unwrap<T>({ data, error }: { data: T | null; error: { message: string }
   return data as T;
 }
 
+/**
+ * Safe unwrap that returns empty array instead of throwing
+ */
+function safeUnwrap<T>({ data, error }: { data: T | null; error: { message: string } | null }): T {
+  if (error) {
+    console.warn("API call returned error, returning empty array:", error.message);
+    return [] as T;
+  }
+  return (data || []) as T;
+}
+
 /* ---------------- profile + settings ---------------- */
 
 export async function getProfile() {
@@ -59,9 +70,8 @@ export async function updateSettings(patch: TablesUpdate<"user_settings">) {
 /* ---------------- projects ---------------- */
 
 export async function listProjects() {
-  return unwrap(
-    await supabase.from("projects").select("*").order("updated_at", { ascending: false }),
-  ) as Project[];
+  const result = await supabase.from("projects").select("*").order("updated_at", { ascending: false });
+  return safeUnwrap(result) as Project[];
 }
 
 export async function createProject(input: Omit<TablesInsert<"projects">, "user_id">) {
@@ -81,13 +91,12 @@ export async function deleteProject(id: string) {
 /* ---------------- memories ---------------- */
 
 export async function listMemories() {
-  return unwrap(
-    await supabase
-      .from("memories")
-      .select("*")
-      .order("is_pinned", { ascending: false })
-      .order("updated_at", { ascending: false }),
-  ) as Memory[];
+  const result = await supabase
+    .from("memories")
+    .select("*")
+    .order("is_pinned", { ascending: false })
+    .order("updated_at", { ascending: false });
+  return safeUnwrap(result) as Memory[];
 }
 
 export async function createMemory(input: Omit<TablesInsert<"memories">, "user_id">) {
@@ -107,9 +116,8 @@ export async function deleteMemory(id: string) {
 /* ---------------- documents (storage + rows) ---------------- */
 
 export async function listDocuments() {
-  return unwrap(
-    await supabase.from("documents").select("*").order("created_at", { ascending: false }),
-  ) as DocumentRow[];
+  const result = await supabase.from("documents").select("*").order("created_at", { ascending: false });
+  return safeUnwrap(result) as DocumentRow[];
 }
 
 export async function uploadDocument(file: File) {
@@ -147,9 +155,8 @@ export async function deleteDocument(doc: DocumentRow) {
 /* ---------------- chat ---------------- */
 
 export async function listSessions() {
-  return unwrap(
-    await supabase.from("chat_sessions").select("*").order("updated_at", { ascending: false }),
-  ) as ChatSession[];
+  const result = await supabase.from("chat_sessions").select("*").order("updated_at", { ascending: false });
+  return safeUnwrap(result) as ChatSession[];
 }
 
 export async function createSession(title = "New conversation") {
@@ -198,8 +205,7 @@ export async function markNotificationRead(id: string) {
 
 export async function listAIModels() {
   const result = await supabase.from("ai_models").select("*").order("created_at", { ascending: false });
-  if (result.error) throw new Error(result.error.message);
-  return (result.data as AIModel[]) || [];
+  return safeUnwrap(result) as AIModel[];
 }
 
 export async function createAIModel(input: Omit<TablesInsert<"ai_models">, "user_id">) {
@@ -252,9 +258,8 @@ export async function removeModelApiKey(modelId: string) {
 /* ---------------- automations ---------------- */
 
 export async function listAutomations() {
-  return unwrap(
-    await supabase.from("automations").select("*").order("created_at", { ascending: false }),
-  ) as Automation[];
+  const result = await supabase.from("automations").select("*").order("created_at", { ascending: false });
+  return safeUnwrap(result) as Automation[];
 }
 
 export async function createAutomation(input: Omit<TablesInsert<"automations">, "user_id">) {
@@ -274,9 +279,8 @@ export async function deleteAutomation(id: string) {
 /* ---------------- simulations ---------------- */
 
 export async function listSimulations() {
-  return unwrap(
-    await supabase.from("simulations").select("*").order("updated_at", { ascending: false }),
-  ) as Simulation[];
+  const result = await supabase.from("simulations").select("*").order("updated_at", { ascending: false });
+  return safeUnwrap(result) as Simulation[];
 }
 
 export async function createSimulation(input: Omit<any, "user_id" | "id" | "created_at" | "updated_at">) {
@@ -302,9 +306,8 @@ export async function deleteSimulation(id: string) {
 /* ---------------- iot devices ---------------- */
 
 export async function listIoTDevices() {
-  return unwrap(
-    await supabase.from("iot_devices").select("*").order("created_at", { ascending: false }),
-  ) as IoTDevice[];
+  const result = await supabase.from("iot_devices").select("*").order("created_at", { ascending: false });
+  return safeUnwrap(result) as IoTDevice[];
 }
 
 export async function createIoTDevice(input: Omit<any, "user_id" | "id" | "created_at" | "updated_at">) {
@@ -330,9 +333,8 @@ export async function deleteIoTDevice(id: string) {
 /* ---------------- 3d assets ---------------- */
 
 export async function list3DAssets() {
-  return unwrap(
-    await supabase.from("assets_3d").select("*").order("created_at", { ascending: false }),
-  ) as Asset3D[];
+  const result = await supabase.from("assets_3d").select("*").order("created_at", { ascending: false });
+  return safeUnwrap(result) as Asset3D[];
 }
 
 export async function upload3DAsset(file: File, metadata?: any) {

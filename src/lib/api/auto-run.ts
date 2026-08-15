@@ -2,12 +2,15 @@
  * Auto-Run Server Functions
  *
  * Server-side endpoints for managing local AI services.
- * These functions can spawn and monitor processes for Ollama, Whisper, and Piper.
+ * These functions can spawn and monitor processes for Ollama (Portable), Whisper, and Piper.
+ *
+ * IMPORTANT: Now uses PORTABLE Ollama - no system installation required!
  */
 
 import { createServerFn } from "@tanstack/react-start";
 import { spawn } from "child_process";
 import { autoRunService } from "../services/auto-run-service";
+import { portableOllamaManager } from "../services/portable-ollama";
 
 /**
  * Server function to auto-start all enabled services
@@ -79,6 +82,7 @@ export const checkServicesStatusFn = createServerFn({ method: "GET" }).handler(a
 
 /**
  * Start Ollama service
+ * Now uses portable Ollama manager
  */
 async function startOllama(): Promise<{
   name: string;
@@ -87,64 +91,87 @@ async function startOllama(): Promise<{
   pid?: number;
   error?: string;
 }> {
-  console.log('[AutoRun Server] Starting Ollama...');
+  console.log('[AutoRun Server] Starting Portable Ollama...');
 
   try {
-    // Check if Ollama is already running
-    const ollamaCheck = await fetch('http://127.0.0.1:11434/api/tags', {
-      signal: AbortSignal.timeout(5000),
-    });
+    // Check if portable Ollama is installed
+    const isInstalled = portableOllamaManager.isInstalled();
 
-    if (ollamaCheck.ok) {
-      console.log('[AutoRun Server] Ollama is already running');
+    if (!isInstalled) {
       return {
-        name: 'Ollama',
+        name: 'Ollama (Portable)',
+        success: false,
+        running: false,
+        error: 'Portable Ollama not installed. Run installation first.',
+      };
+    }
+
+    // Check if already running
+    try {
+      const ollamaCheck = await fetch('http://127.0.0.1:11434/api/tags', {
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (ollamaCheck.ok) {
+        console.log('[AutoRun Server] Ollama is already running');
+        return {
+          name: 'Ollama (Portable)',
+          success: true,
+          running: true,
+        };
+      }
+    } catch (error) {
+      console.log('[AutoRun Server] Ollama not running, starting...');
+    }
+
+    // Start portable Ollama
+    const result = await portableOllamaManager.start();
+
+    if (result.running) {
+      console.log('[AutoRun Server] Portable Ollama started successfully');
+
+      // Wait for Ollama to be ready
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Verify Ollama is responding
+      try {
+        const verifyCheck = await fetch('http://127.0.0.1:11434/api/tags', {
+          signal: AbortSignal.timeout(10000),
+        });
+
+        if (verifyCheck.ok) {
+          return {
+            name: 'Ollama (Portable)',
+            success: true,
+            running: true,
+          };
+        }
+      } catch (error) {
+        console.error('[AutoRun Server] Ollama not responding:', error);
+      }
+
+      return {
+        name: 'Ollama (Portable)',
         success: true,
         running: true,
       };
     }
+
+    return {
+      name: 'Ollama (Portable)',
+      success: false,
+      running: false,
+      error: result.error || 'Failed to start Portable Ollama',
+    };
   } catch (error) {
-    console.log('[AutoRun Server] Ollama not running, starting...');
+    console.error('[AutoRun Server] Failed to start Ollama:', error);
+    return {
+      name: 'Ollama (Portable)',
+      success: false,
+      running: false,
+      error: error instanceof Error ? error.message : 'Failed to start Ollama',
+    };
   }
-
-  // Spawn Ollama process
-  const ollamaProcess = spawn('ollama', ['serve'], {
-    stdio: 'ignore',
-    detached: true,
-  });
-
-  ollamaProcess.unref();
-
-  console.log('[AutoRun Server] Ollama process spawned, PID:', ollamaProcess.pid);
-
-  // Wait for Ollama to start
-  await new Promise(resolve => setTimeout(resolve, 3000));
-
-  // Verify Ollama started
-  try {
-    const verifyCheck = await fetch('http://127.0.0.1:11434/api/tags', {
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (verifyCheck.ok) {
-      console.log('[AutoRun Server] Ollama started successfully');
-      return {
-        name: 'Ollama',
-        success: true,
-        running: true,
-        pid: ollamaProcess.pid,
-      };
-    }
-  } catch (error) {
-    console.error('[AutoRun Server] Ollama failed to start:', error);
-  }
-
-  return {
-    name: 'Ollama',
-    success: false,
-    running: false,
-    error: 'Failed to start Ollama. Make sure Ollama is installed.',
-  };
 }
 
 /**
@@ -313,23 +340,37 @@ async function startPiper(): Promise<{
 
 /**
  * Server function to get installation commands
+ * Now reflects portable Ollama system
  */
 export const getInstallationCommandsFn = createServerFn({ method: "GET" }).handler(() => {
   return {
     ollama: {
-      install: 'brew install ollama', // macOS
-      alternative: 'curl -fsSL https://ollama.com/install.sh | sh', // Linux
-      windows: 'Download from https://ollama.com',
-      start: 'ollama serve',
-      pullModel: 'ollama pull qwen3-coder:30b',
+      install: 'AUTOMATIC - Uses Portable Ollama',
+      description: 'No manual installation required - downloads automatically',
+      start: 'Automatic - JANUARY starts portable Ollama',
+      pullModel: 'Automatic - Use JANUARY interface to pull models',
+      model: 'qwen2.5-coder:32b (recommended)',
+      alternative: 'qwen2.5:7b (smaller model)',
+    },
+    portable: {
+      description: 'PORTABLE OLLAMA - No system installation required!',
+      features: [
+        '✅ Downloads automatically on first use',
+        '✅ Runs from JANUARY app directory',
+        '✅ No admin privileges required',
+        '✅ Works on macOS, Linux, Windows',
+        '✅ Supports AMD64 and ARM64',
+      ],
     },
     whisper: {
       install: 'pip install faster-whisper',
       start: 'faster-whisper-server --host 127.0.0.1 --port 8080',
+      optional: true,
     },
     piper: {
       install: 'pip install piper-tts',
       start: 'piper-tts-server --host 127.0.0.1 --port 8081',
+      optional: true,
     },
   };
 });

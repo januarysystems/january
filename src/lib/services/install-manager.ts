@@ -2,16 +2,19 @@
  * JANUARY Installation Manager
  *
  * Automatically detects, installs, and configures all required services:
- * - Ollama (if not installed)
+ * - Ollama (if not installed) - Portable/Bundled version
  * - Qwen3-Coder 30B model (if not pulled)
  * - Whisper (optional, for voice input)
  * - Piper (optional, for female voice output)
  *
  * Makes JANUARY truly "just run npm install && npm run dev"
+ *
+ * Now uses PORTABLE Ollama - no system-level installation required!
  */
 
 import { spawn } from "child_process";
 import { promisify } from "util";
+import { portableOllamaManager } from "./portable-ollama";
 
 const execAsync = promisify(require('child_process').exec);
 
@@ -98,92 +101,80 @@ export class InstallationManager {
 
   /**
    * Check if Ollama is installed
+   * Now uses portable Ollama manager
    */
   async checkOllamaInstalled(): Promise<InstallationStatus> {
     try {
-      const { stdout } = await execAsync('ollama --version');
-      const version = stdout.trim();
-      console.log('[InstallManager] Ollama installed:', version);
+      const isInstalled = portableOllamaManager.isInstalled();
+      const status = portableOllamaManager.getStatus();
+
+      console.log('[InstallManager] Portable Ollama installed:', isInstalled);
+
+      if (isInstalled) {
+        return {
+          component: 'Ollama (Portable)',
+          installed: true,
+          version: `Portable ${status.platform}-${status.architecture}`,
+        };
+      }
+
       return {
-        component: 'Ollama',
-        installed: true,
-        version,
-      };
-    } catch (error) {
-      console.log('[InstallManager] Ollama not installed');
-      return {
-        component: 'Ollama',
+        component: 'Ollama (Portable)',
         installed: false,
         actionRequired: true,
-        error: 'Ollama is not installed',
+        error: 'Portable Ollama is not installed',
+      };
+    } catch (error) {
+      console.log('[InstallManager] Portable Ollama check failed:', error);
+      return {
+        component: 'Ollama (Portable)',
+        installed: false,
+        actionRequired: true,
+        error: 'Failed to check portable Ollama',
       };
     }
   }
 
   /**
    * Install Ollama automatically
+   * Now uses portable/bundled Ollama - no system installation required!
    */
   async installOllama(): Promise<InstallationStatus> {
-    this.reportProgress('ollama-install', 0, 'Starting Ollama installation...', 'running');
+    this.reportProgress('ollama-install', 0, 'Starting portable Ollama installation...', 'running');
 
     try {
-      const platform = process.platform;
-      let installCommand: string;
+      const status = portableOllamaManager.getStatus();
+      this.reportProgress('ollama-install', 5, `Platform: ${status.platform}-${status.architecture}`, 'running');
 
-      if (platform === 'darwin') {
-        // macOS - use Homebrew
-        this.reportProgress('ollama-install', 10, 'Installing Ollama via Homebrew...', 'running');
+      this.reportProgress('ollama-install', 10, 'Downloading portable Ollama...', 'running');
 
-        // Check if Homebrew is installed
-        try {
-          await execAsync('brew --version');
-        } catch (error) {
-          this.reportProgress('ollama-install', 5, 'Homebrew not found. Installing Homebrew first...', 'running');
-          await this.installHomebrew();
-        }
+      // Install portable Ollama
+      const result = await portableOllamaManager.install((progress) => {
+        this.reportProgress('ollama-install', progress.percentage,
+          `Downloading Ollama: ${Math.round(progress.percentage)}% (${Math.round(progress.speed)} Mbps)`,
+          progress.status === 'complete' ? 'completed' : 'running');
+      });
 
-        installCommand = 'brew install ollama';
-        this.reportProgress('ollama-install', 20, 'Running: brew install ollama', 'running');
-
-      } else if (platform === 'linux') {
-        // Linux - use official install script
-        this.reportProgress('ollama-install', 20, 'Installing Ollama via official script...', 'running');
-        installCommand = 'curl -fsSL https://ollama.com/install.sh | sh';
-
-      } else {
+      if (result.installed) {
+        this.reportProgress('ollama-install', 100, 'Portable Ollama installed successfully!', 'completed');
         return {
-          component: 'Ollama',
-          installed: false,
-          error: 'Automatic installation not supported on Windows. Please download from https://ollama.com',
-          actionRequired: true,
+          component: 'Ollama (Portable)',
+          installed: true,
+          version: `Portable ${result.platform}-${result.architecture}`,
         };
       }
 
-      // Execute installation
-      await execAsync(installCommand, {
-        env: { ...process.env, NONINTERACTIVE: '1' },
-      });
-
-      this.reportProgress('ollama-install', 90, 'Verifying installation...', 'running');
-
-      // Verify installation
-      const check = await this.checkOllamaInstalled();
-      if (check.installed) {
-        this.reportProgress('ollama-install', 100, 'Ollama installed successfully!', 'completed');
-        return check;
-      }
-
       return {
-        component: 'Ollama',
+        component: 'Ollama (Portable)',
         installed: false,
-        error: 'Installation verification failed',
+        error: result.error || 'Installation failed',
         actionRequired: true,
       };
 
     } catch (error) {
-      this.reportProgress('ollama-install', 0, 'Ollama installation failed', 'error');
+      this.reportProgress('ollama-install', 0, 'Portable Ollama installation failed', 'error');
       return {
-        component: 'Ollama',
+        component: 'Ollama (Portable)',
         installed: false,
         error: error instanceof Error ? error.message : 'Installation failed',
         actionRequired: true,
@@ -211,14 +202,15 @@ export class InstallationManager {
 
   /**
    * Check if model is available
+   * Now uses portable Ollama manager
    */
-  async checkModelInstalled(model: string = 'qwen3-coder:30b'): Promise<InstallationStatus> {
+  async checkModelInstalled(model: string = 'qwen2.5-coder:32b'): Promise<InstallationStatus> {
     try {
-      const { stdout } = await execAsync('ollama list');
-      const models = stdout.trim();
+      const models = await portableOllamaManager.getInstalledModels();
       const modelInstalled = models.includes(model);
 
       console.log('[InstallManager] Model', model, 'installed:', modelInstalled);
+      console.log('[InstallManager] Available models:', models);
 
       return {
         component: `Model (${model})`,
@@ -237,62 +229,23 @@ export class InstallationManager {
 
   /**
    * Pull Ollama model
+   * Now uses portable Ollama manager
    */
-  async pullModel(model: string = 'qwen3-coder:30b'): Promise<InstallationStatus> {
+  async pullModel(model: string = 'qwen2.5-coder:32b'): Promise<InstallationStatus> {
     this.reportProgress('model-pull', 0, `Pulling ${model}...`, 'running');
 
     try {
       this.reportProgress('model-pull', 10, 'Starting model download (this may take a while)...', 'running');
 
-      const modelProcess = spawn('ollama', ['pull', model]);
-
-      return new Promise((resolve) => {
-        let progress = 10;
-
-        modelProcess.stdout?.on('data', (data) => {
-          const output = data.toString();
-          console.log('[InstallManager] Pull progress:', output);
-
-          // Update progress based on output
-          if (output.includes('%')) {
-            const match = output.match(/(\d+)%/);
-            if (match) {
-              progress = 10 + parseInt(match[1]) * 0.8;
-              this.reportProgress('model-pull', progress, `Downloading model: ${Math.round(progress)}%`, 'running');
-            }
-          }
-        });
-
-        modelProcess.stderr?.on('data', (data) => {
-          console.log('[InstallManager] Pull error:', data.toString());
-        });
-
-        modelProcess.on('close', async (code) => {
-          if (code === 0) {
-            this.reportProgress('model-pull', 100, 'Model downloaded successfully!', 'completed');
-            const check = await this.checkModelInstalled(model);
-            resolve(check);
-          } else {
-            this.reportProgress('model-pull', 0, 'Model download failed', 'error');
-            resolve({
-              component: `Model (${model})`,
-              installed: false,
-              error: `Download failed with code ${code}`,
-              actionRequired: true,
-            });
-          }
-        });
-
-        modelProcess.on('error', (error) => {
-          this.reportProgress('model-pull', 0, 'Model download failed', 'error');
-          resolve({
-            component: `Model (${model})`,
-            installed: false,
-            error: error.message,
-            actionRequired: true,
-          });
-        });
+      await portableOllamaManager.pullModel(model, (progress) => {
+        this.reportProgress('model-pull', progress.percentage,
+          `Downloading model: ${Math.round(progress.percentage)}%`,
+          progress.status === 'complete' ? 'completed' : 'running');
       });
+
+      this.reportProgress('model-pull', 100, 'Model downloaded successfully!', 'completed');
+      const check = await this.checkModelInstalled(model);
+      return check;
 
     } catch (error) {
       this.reportProgress('model-pull', 0, 'Model download failed', 'error');

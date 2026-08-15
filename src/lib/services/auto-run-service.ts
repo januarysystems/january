@@ -2,13 +2,15 @@
  * Auto-Run Service for JANUARY Local Services
  *
  * Manages automatic startup and monitoring of local AI services:
- * - Ollama (Local AI)
+ * - Ollama (Local AI) - Now using portable/bundled version
  * - Whisper (Speech-to-Text)
  * - Piper (Text-to-Speech)
  *
  * This service can automatically start these services when JANUARY launches
  * if they are not already running.
  */
+
+import { portableOllamaManager } from './portable-ollama';
 
 export interface ServiceConfig {
   name: string;
@@ -142,8 +144,7 @@ export class AutoRunService {
   /**
    * Start a service
    *
-   * Note: This requires server-side execution (Node.js child_process)
-   * Browser JavaScript cannot directly spawn processes
+   * Now uses portable Ollama manager for the Ollama service
    */
   async startService(serviceKey: string): Promise<ServiceStatus> {
     const configs = this.getServiceConfigs();
@@ -158,7 +159,46 @@ export class AutoRunService {
       };
     }
 
-    // Check if already running
+    // Handle Ollama with portable manager
+    if (serviceKey === 'ollama') {
+      const isInstalled = portableOllamaManager.isInstalled();
+
+      if (!isInstalled) {
+        const status: ServiceStatus = {
+          name: config.name,
+          running: false,
+          autoStarted: false,
+          error: 'Portable Ollama not installed. Run installation first.',
+        };
+        this.serviceStatus.set(serviceKey, status);
+        return status;
+      }
+
+      // Check if already running
+      const alreadyRunning = await this.checkServiceRunning(config);
+      if (alreadyRunning) {
+        const status: ServiceStatus = {
+          name: config.name,
+          running: true,
+          autoStarted: false,
+        };
+        this.serviceStatus.set(serviceKey, status);
+        return status;
+      }
+
+      // Start portable Ollama
+      const result = await portableOllamaManager.start();
+      const status: ServiceStatus = {
+        name: config.name,
+        running: result.running,
+        autoStarted: result.running,
+        error: result.error,
+      };
+      this.serviceStatus.set(serviceKey, status);
+      return status;
+    }
+
+    // For other services (Whisper, Piper), keep the old behavior
     const alreadyRunning = await this.checkServiceRunning(config);
     if (alreadyRunning) {
       const status: ServiceStatus = {
@@ -171,7 +211,6 @@ export class AutoRunService {
     }
 
     // Server-side only: Cannot spawn processes from browser
-    // This will be called from server endpoints
     const status: ServiceStatus = {
       name: config.name,
       running: false,

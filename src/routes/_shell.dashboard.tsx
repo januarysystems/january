@@ -1,5 +1,6 @@
 import { useQueries } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import {
   Bot,
   Boxes,
@@ -25,6 +26,9 @@ import {
 
 import { AICore, Waveform } from "@/components/january/AICore";
 import { AppShell } from "@/components/january/AppShell";
+import { WakeWordDetector } from "@/components/january/WakeWordDetector";
+import { PermissionRequester } from "@/components/january/PermissionRequester";
+import { ErrorBoundary } from "@/components/january/ErrorBoundary";
 import {
   ActivityRow,
   MetricBar,
@@ -85,19 +89,29 @@ const TOOLS = [
 ];
 
 function DashboardPage() {
+  const [mounted, setMounted] = useState(false);
+  const [componentError, setComponentError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
   const results = useQueries({
     queries: [
-      { queryKey: ["projects"], queryFn: listProjects },
-      { queryKey: ["chat-sessions"], queryFn: listSessions },
-      { queryKey: ["memories"], queryFn: listMemories },
-      { queryKey: ["documents"], queryFn: listDocuments },
-      { queryKey: ["automations"], queryFn: listAutomations },
-      { queryKey: ["ai-models"], queryFn: listAIModels },
-      { queryKey: ["simulations"], queryFn: listSimulations },
-      { queryKey: ["iot-devices"], queryFn: listIoTDevices },
-      { queryKey: ["3d-assets"], queryFn: list3DAssets },
+      { queryKey: ["projects"], queryFn: () => listProjects().catch(() => []) },
+      { queryKey: ["chat-sessions"], queryFn: () => listSessions().catch(() => []) },
+      { queryKey: ["memories"], queryFn: () => listMemories().catch(() => []) },
+      { queryKey: ["documents"], queryFn: () => listDocuments().catch(() => []) },
+      { queryKey: ["automations"], queryFn: () => listAutomations().catch(() => []) },
+      { queryKey: ["ai-models"], queryFn: () => listAIModels().catch(() => []) },
+      { queryKey: ["simulations"], queryFn: () => listSimulations().catch(() => []) },
+      { queryKey: ["iot-devices"], queryFn: () => listIoTDevices().catch(() => []) },
+      { queryKey: ["3d-assets"], queryFn: () => list3DAssets().catch(() => []) },
     ],
   });
+
+  const isLoading = results.some((r) => r.isLoading);
 
   const stats = {
     projects: results[0].data?.length ?? 0,
@@ -111,18 +125,95 @@ function DashboardPage() {
     assets3d: results[8].data?.length ?? 0,
   };
 
-  const isLoading = results.some((r) => r.isLoading);
+  // Log for debugging
+  console.log('[Dashboard] Rendering with stats:', stats);
+  console.log('[Dashboard] Loading state:', isLoading);
+
+  // Handle component errors
+  if (componentError) {
+    return (
+      <AppShell showPromptBar={false}>
+        <PermissionRequester autoRequest={false} showUI={false} />
+        <div className="flex h-full min-h-[560px] items-center justify-center">
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">Dashboard Error: {componentError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 rounded-md bg-amber/10 px-4 py-2 text-amber hover:bg-amber/20"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
-    <AppShell promptPlaceholder="Type your message or speak...">
+    <AppShell showPromptBar={false}>
+      {/* Permission Requester - with error boundary */}
+      <ErrorBoundary fallback={null}>
+        <PermissionRequester autoRequest={true} showUI={true} />
+      </ErrorBoundary>
+
       <div className="flex h-full min-h-[560px] gap-3">
 
         <Panel className="flex min-w-0 flex-1 flex-col p-4">
-          <AICore />
+          {/* Header */}
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">JANUARY Dashboard</h1>
+              <p className="text-[11px] text-muted-foreground">AI Core command center</p>
+            </div>
+            {isLoading && (
+              <div className="flex items-center gap-2 text-[10px] text-amber">
+                <div className="size-2 animate-pulse rounded-full bg-amber" />
+                Loading workspace data...
+              </div>
+            )}
+          </div>
 
-          {isLoading ? (
-            <div className="mt-4 text-center text-[12px] text-muted-foreground">Loading workspace...</div>
-          ) : null}
+          {/* AI Core - with error boundary */}
+          <ErrorBoundary fallback={<div className="text-center text-muted-foreground">AI Core unavailable</div>}>
+            <AICore />
+          </ErrorBoundary>
+
+          {/* Wake Word Detector - with error boundary */}
+          <div className="mt-6">
+            <ErrorBoundary fallback={null}>
+              <WakeWordDetector />
+            </ErrorBoundary>
+          </div>
+
+          {/* Stats Display */}
+          {!isLoading && (
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <div className="glass-panel rounded-lg p-3 text-center">
+                <p className="text-[10px] text-muted-foreground">Projects</p>
+                <p className="text-lg font-semibold text-amber">{stats.projects}</p>
+              </div>
+              <div className="glass-panel rounded-lg p-3 text-center">
+                <p className="text-[10px] text-muted-foreground">Conversations</p>
+                <p className="text-lg font-semibold text-amber">{stats.conversations}</p>
+              </div>
+              <div className="glass-panel rounded-lg p-3 text-center">
+                <p className="text-[10px] text-muted-foreground">Memories</p>
+                <p className="text-lg font-semibold text-amber">{stats.memories}</p>
+              </div>
+              <div className="glass-panel rounded-lg p-3 text-center">
+                <p className="text-[10px] text-muted-foreground">Documents</p>
+                <p className="text-lg font-semibold text-amber">{stats.documents}</p>
+              </div>
+              <div className="glass-panel rounded-lg p-3 text-center">
+                <p className="text-[10px] text-muted-foreground">Models</p>
+                <p className="text-lg font-semibold text-amber">{stats.models}</p>
+              </div>
+              <div className="glass-panel rounded-lg p-3 text-center">
+                <p className="text-[10px] text-muted-foreground">Automations</p>
+                <p className="text-lg font-semibold text-amber">{stats.automations}</p>
+              </div>
+            </div>
+          )}
         </Panel>
       </div>
     </AppShell>

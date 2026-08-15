@@ -714,7 +714,7 @@ LOCAL AI SETUP (PHASE 2)
 JANUARY now runs with a completely local AI stack.
 
 COMPONENTS:
-• Local LLM: Ollama + Qwen3-Coder 30B
+• Local LLM: PORTABLE Ollama + Qwen2.5-Coder 32B
 • Local Speech-to-Text: Whisper (faster-whisper)
 • Local Text-to-Speech: Piper (Female Voice)
 
@@ -726,25 +726,41 @@ npm install
 npm run dev
 
 That's it! JANUARY will:
-✅ Automatically detect if Ollama is installed
-✅ Install Ollama if missing (macOS/Linux)
-✅ Pull the Qwen3-Coder 30B model automatically
+✅ Automatically download PORTABLE Ollama for your platform
+✅ Install Ollama WITHIN the app (no system installation needed!)
+✅ Pull the Qwen2.5-Coder 32B model automatically
 ✅ Start all services automatically
 ✅ Be ready to chat in minutes
 
 NO MORE MANUAL STEPS!
+NO SYSTEM INSTALLATION REQUIRED!
 
 FIRST RUN DETAILS:
 
 On first launch, JANUARY will:
-1. Check if Ollama is installed
-2. Install Ollama automatically if needed (via Homebrew on macOS)
-3. Pull the qwen3-coder:30b model (~18GB download)
-4. Start Ollama service
+1. Check if portable Ollama is downloaded
+2. Download Ollama binary for your platform automatically
+3. Pull the qwen2.5-coder:32b model (~19GB download)
+4. Start portable Ollama from the app directory
 5. Display installation progress in the UI
 6. Be ready for chat!
 
 The model download takes a few minutes, but then JANUARY works completely offline.
+
+PORTABLE OLLAMA SYSTEM:
+
+✅ NO SYSTEM INSTALLATION REQUIRED
+✅ Works on macOS (Intel & Apple Silicon)
+✅ Works on Linux (AMD64 & ARM64)
+✅ Works on Windows (AMD64 & ARM64)
+✅ All binaries stored in JANUARY app directory
+✅ No admin privileges required
+✅ Completely isolated from system
+
+STORAGE LOCATIONS:
+• macOS: ~/Library/Application Support/january/january-ollama
+• Linux: ~/.local/share/january/january-ollama
+• Windows: %LOCALAPPDATA%\january\january-ollama
 
 ENVIRONMENT VARIABLES (Optional):
 
@@ -760,9 +776,9 @@ AUTO_RUN_ENABLED=true
 AUTO_START_SERVICES=true
 AUTO_RUN_OLLAMA=true
 
-# Ollama (Local AI)
+# Ollama (Local AI - Portable)
 OLLAMA_BASE_URL=http://127.0.0.1:11434
-OLLAMA_MODEL=qwen3-coder:30b
+OLLAMA_MODEL=qwen2.5-coder:32b
 
 # Whisper (Speech-to-Text)
 WHISPER_HOST=127.0.0.1
@@ -781,7 +797,7 @@ TESTING:
 TEXT CHAT:
 1. Open Chat page
 2. Type "Hello JANUARY"
-3. Expected: Real AI response from local Ollama
+3. Expected: Real AI response from portable Ollama
 4. Test conversation context:
    - "My name is Ashwin."
    - "What is my name?"
@@ -803,11 +819,15 @@ The 3D Core should transition:
 
 TROUBLESHOOTING:
 
-"Ollama is not running":
-→ Start Ollama: ollama serve
+"Portable Ollama not installed":
+→ JANUARY will download it automatically on first run
+→ Check your internet connection
+→ Available on macOS, Linux, and Windows
 
 "Model not installed":
-→ Pull model: ollama pull qwen3-coder:30b
+→ Use JANUARY's model download interface
+→ Or it will be pulled automatically on first chat
+→ Model: qwen2.5-coder:32b (~19GB)
 
 "Whisper unavailable":
 → Install faster-whisper: pip install faster-whisper
@@ -818,17 +838,22 @@ TROUBLESHOOTING:
 → Check service is running on port 8081
 → Verify female voice is installed
 
+"Port 11434 in use":
+→ Stop any existing Ollama instances
+→ JANUARY uses portable Ollama on port 11434
+
 PRIVACY & SECURITY:
 
 • All AI processing happens locally
 • No data sent to cloud AI services
 • No API keys required
-• Ollama runs on your machine
+• Portable Ollama runs from JANUARY app directory
 • Whisper and Piper run locally
+• Complete data isolation
 
 ARCHITECTURE:
 
-Frontend → JANUARY AI Service → Ollama → Qwen3-Coder 30B
+Frontend → JANUARY AI Service → Portable Ollama → Qwen2.5-Coder 32B
          ↓
          Supabase (Chat persistence)
          ↓
@@ -837,5 +862,13 @@ Frontend → JANUARY AI Service → Ollama → Qwen3-Coder 30B
          Browser Audio Output
 
 Voice Input → Local Whisper → Transcript → AI → Response
+
+PORTABLE ARCHITECTURE:
+
+• Ollama Binary: Downloaded per-platform, stored in app directory
+• Models: Stored in app data directory (not system-wide)
+• No system PATH modifications
+• No admin privileges required
+• Complete isolation from system Ollama installations
 
 ==========================================================

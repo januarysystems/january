@@ -1,11 +1,18 @@
 /**
  * Ollama AI Service for JANUARY
  *
- * Local AI service using Ollama for text generation.
+ * Local AI service using Portable Ollama for text generation.
  * This service handles all Ollama AI interactions.
  *
- * Ollama provides local AI inference without requiring API keys or cloud services.
+ * Portable Ollama provides local AI inference without requiring:
+ * - System-level installation
+ * - API keys or cloud services
+ * - External dependencies
+ *
+ * Everything is bundled within the JANUARY application.
  */
+
+import { portableOllamaManager } from '../services/portable-ollama';
 
 export interface OllamaMessage {
   role: 'system' | 'user' | 'assistant';
@@ -70,13 +77,14 @@ class OllamaServicePrivate {
    */
   private getModel(): string {
     if (typeof process !== 'undefined' && process.env) {
-      return process.env.OLLAMA_MODEL || 'qwen3-coder:30b';
+      return process.env.OLLAMA_MODEL || 'qwen2.5-coder:32b';
     }
-    return 'qwen3-coder:30b';
+    return 'qwen2.5-coder:32b';
   }
 
   /**
    * Initialize the service
+   * Now handles portable Ollama startup
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
@@ -86,6 +94,21 @@ class OllamaServicePrivate {
     console.log('[OllamaService] Initializing Ollama Service...');
     console.log('[OllamaService] Base URL:', this.baseUrl);
     console.log('[OllamaService] Default model:', this.defaultModel);
+
+    // Check if portable Ollama is installed
+    const isInstalled = portableOllamaManager.isInstalled();
+    console.log('[OllamaService] Portable Ollama installed:', isInstalled);
+
+    // Start portable Ollama if not running
+    if (isInstalled) {
+      const status = await portableOllamaManager.start();
+      console.log('[OllamaService] Portable Ollama started:', status.running);
+
+      if (status.running) {
+        // Update base URL to use portable Ollama
+        this.baseUrl = 'http://127.0.0.1:11434';
+      }
+    }
 
     // Check Ollama availability
     const health = await this.checkHealth();

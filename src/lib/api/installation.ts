@@ -2,11 +2,15 @@
  * Installation Server Functions
  *
  * Server-side endpoints for automatic installation of JANUARY dependencies.
- * These functions handle Ollama installation, model downloads, and setup.
+ * These functions handle Portable Ollama installation, model downloads, and setup.
+ *
+ * IMPORTANT: Now uses PORTABLE Ollama - no system installation required!
+ * All binaries are downloaded and managed within the JANUARY application.
  */
 
 import { createServerFn } from "@tanstack/react-start";
 import { installationManager } from "../services/install-manager";
+import { portableOllamaManager } from "../services/portable-ollama";
 import type { InstallationProgress } from "../services/install-manager";
 
 // Store active installation progress for polling
@@ -94,12 +98,12 @@ export const installOllamaFn = createServerFn({ method: "POST" }).handler(async 
 });
 
 /**
- * Server function to pull the Qwen3-Coder model
+ * Server function to pull the Qwen2.5-Coder model
  */
 export const pullModelFn = createServerFn({ method: "POST" })
   .validator((data: unknown) => {
     const body = data as { model?: string };
-    return { model: body.model || 'qwen3-coder:30b' };
+    return { model: body.model || 'qwen2.5-coder:32b' };
   })
   .handler(async ({ data }) => {
     console.log('[Installation Server] Pulling model:', data.model);
@@ -123,32 +127,41 @@ export const installPiperFn = createServerFn({ method: "POST" }).handler(async (
 });
 
 /**
- * Server function to get installation commands
+ * Server function to get installation help
+ * Now reflects portable Ollama system
  */
 export const getInstallationHelpFn = createServerFn({ method: "GET" }).handler(() => {
   const platform = process.platform;
 
   return {
     ollama: {
-      ...platform === 'darwin' ? {
-        install: 'brew install ollama',
-        description: 'Install via Homebrew (macOS)',
-      } : platform === 'linux' ? {
-        install: 'curl -fsSL https://ollama.com/install.sh | sh',
-        description: 'Install via official script (Linux)',
-      } : {
-        install: 'Download from https://ollama.com',
-        description: 'Download installer for Windows',
-      },
-      start: 'ollama serve',
-      pullModel: 'ollama pull qwen3-coder:30b',
-      verify: 'ollama list',
+      install: 'AUTOMATIC - Portable Ollama downloads on first use',
+      description: 'Portable Ollama - No system installation required!',
+      type: 'portable',
+      platforms: ['darwin', 'linux', 'windows'],
+      architectures: ['amd64', 'arm64'],
     },
     model: {
-      name: 'qwen3-coder:30b',
-      pull: 'ollama pull qwen3-coder:30b',
-      size: '~18GB',
-      description: '30B parameter model for coding and technical assistance',
+      name: 'qwen2.5-coder:32b',
+      pull: 'Automatic download via JANUARY',
+      size: '~19GB',
+      description: '32B parameter model for coding and technical assistance',
+      alternative: 'qwen2.5:7b (smaller, ~4GB)',
+    },
+    portable: {
+      description: 'PORTABLE OLLAMA SYSTEM',
+      features: [
+        '✅ No system-level installation required',
+        '✅ Downloads binaries for your platform automatically',
+        '✅ Stores everything in JANUARY app directory',
+        '✅ Works on macOS, Linux, and Windows',
+        '✅ Supports both AMD64 and ARM64 architectures',
+      ],
+      storage: platform === 'win32'
+        ? '%LOCALAPPDATA%\\january\\january-ollama'
+        : platform === 'darwin'
+        ? '~/Library/Application Support/january/january-ollama'
+        : '~/.local/share/january/january-ollama',
     },
     whisper: {
       install: 'pip install faster-whisper',
@@ -166,7 +179,40 @@ export const getInstallationHelpFn = createServerFn({ method: "GET" }).handler((
       'npm install',
       'npm run dev',
       'Open http://localhost:8080',
-      'JANUARY will auto-install Ollama on first run!',
+      'JANUARY will download portable Ollama on first run!',
     ],
   };
+});
+
+/**
+ * Server function to get portable Ollama status
+ */
+export const getPortableOllamaStatusFn = createServerFn({ method: "GET" }).handler(() => {
+  const status = portableOllamaManager.getStatus();
+  const installedModels = portableOllamaManager.getInstalledModels();
+
+  return {
+    ...status,
+    models: installedModels,
+    storageDir: portableOllamaManager.getStorageDir(),
+    modelsDir: portableOllamaManager.getModelsDir(),
+  };
+});
+
+/**
+ * Server function to start portable Ollama
+ */
+export const startPortableOllamaFn = createServerFn({ method: "POST" }).handler(async () => {
+  console.log('[Installation Server] Starting portable Ollama...');
+  const result = await portableOllamaManager.start();
+  return result;
+});
+
+/**
+ * Server function to stop portable Ollama
+ */
+export const stopPortableOllamaFn = createServerFn({ method: "POST" }).handler(async () => {
+  console.log('[Installation Server] Stopping portable Ollama...');
+  await portableOllamaManager.stop();
+  return { success: true };
 });

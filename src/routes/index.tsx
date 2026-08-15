@@ -35,7 +35,13 @@ function LoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (session) navigate({ to: "/dashboard" });
+    if (session) {
+      // Small delay to ensure session is fully established
+      const timer = setTimeout(() => {
+        navigate({ to: "/dashboard", replace: true });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
   }, [session, navigate]);
 
   return (
@@ -48,9 +54,15 @@ function LoginPage() {
           setBusy(true);
           try {
             await signIn(email, password);
+
+            // Wait for session to be established
+            await new Promise(resolve => setTimeout(resolve, 500));
+
             const { data } = await supabase.auth.getSession();
             if (data.session?.user) {
-              navigate({ to: "/dashboard" });
+              navigate({ to: "/dashboard", replace: true });
+            } else {
+              setError("Login successful, but session not established. Please try again.");
             }
           } catch (err) {
             setError(err instanceof Error ? err.message : "Unable to sign in");

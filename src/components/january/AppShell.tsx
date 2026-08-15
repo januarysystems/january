@@ -12,11 +12,13 @@ export function AppShell({
   rightPanel,
   promptPlaceholder,
   footer,
+  showPromptBar = true,
 }: {
   children: ReactNode;
   rightPanel?: ReactNode;
   promptPlaceholder?: string;
   footer?: ReactNode;
+  showPromptBar?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -88,7 +90,7 @@ export function AppShell({
               {children}
             </motion.main>
             {footer}
-            <PromptBar placeholder={promptPlaceholder ?? "Ask January anything..."} />
+            {showPromptBar && <PromptBar placeholder={promptPlaceholder ?? "Ask January anything..."} />}
           </div>
 
           {/* Right panel */}
