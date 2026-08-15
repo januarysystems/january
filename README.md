@@ -718,51 +718,47 @@ COMPONENTS:
 • Local Speech-to-Text: Whisper (faster-whisper)
 • Local Text-to-Speech: Piper (Female Voice)
 
-SETUP STEPS:
+🚀 SUPER SIMPLE SETUP:
 
-1. Install Ollama:
-   macOS: brew install ollama
-   Linux: curl -fsSL https://ollama.com/install.sh | sh
-   Windows: Download from https://ollama.com
+Just run these two commands:
 
-2. Pull the model:
-   ollama pull qwen3-coder:30b
+npm install
+npm run dev
 
-3. Configure environment:
-   cp .env.local.example .env
-   # Edit .env with your settings
+That's it! JANUARY will:
+✅ Automatically detect if Ollama is installed
+✅ Install Ollama if missing (macOS/Linux)
+✅ Pull the Qwen3-Coder 30B model automatically
+✅ Start all services automatically
+✅ Be ready to chat in minutes
 
-4. Start JANUARY:
-   npm run dev
+NO MORE MANUAL STEPS!
 
-5. Open in browser:
-   http://localhost:8080
+FIRST RUN DETAILS:
 
-AUTO-RUN FEATURE:
+On first launch, JANUARY will:
+1. Check if Ollama is installed
+2. Install Ollama automatically if needed (via Homebrew on macOS)
+3. Pull the qwen3-coder:30b model (~18GB download)
+4. Start Ollama service
+5. Display installation progress in the UI
+6. Be ready for chat!
 
-JANUARY can automatically start Ollama when it launches!
+The model download takes a few minutes, but then JANUARY works completely offline.
 
-Enable auto-run in .env:
-AUTO_RUN_ENABLED=true
-AUTO_START_SERVICES=true
-AUTO_RUN_OLLAMA=true
+ENVIRONMENT VARIABLES (Optional):
 
-When you start JANUARY, it will:
-• Automatically detect if Ollama is running
-• Start Ollama if it's not running
-• Wait for Ollama to be ready
-• Display status in the Chat page
-
-No more manual `ollama serve` commands!
-
-ENVIRONMENT VARIABLES:
+# Auto-Installation (Automatic Setup)
+AUTO_INSTALL_ENABLED=true
+AUTO_INSTALL_OLLAMA=true
+AUTO_PULL_MODEL=true
+AUTO_INSTALL_WHISPER=false
+AUTO_INSTALL_PIPER=false
 
 # Auto-Run (Automatic Service Startup)
 AUTO_RUN_ENABLED=true
 AUTO_START_SERVICES=true
 AUTO_RUN_OLLAMA=true
-AUTO_RUN_WHISPER=false
-AUTO_RUN_PIPER=false
 
 # Ollama (Local AI)
 OLLAMA_BASE_URL=http://127.0.0.1:11434
