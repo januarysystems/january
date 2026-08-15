@@ -249,17 +249,6 @@ export function WakeWordDetector({ onResponse }: WakeWordDetectorProps) {
       setError('Microphone access denied. Please allow microphone access.');
     }
   };
-    if (isActive) {
-      wakeWordService.stop();
-      setIsActive(false);
-    } else {
-      const started = await wakeWordService.start();
-      if (started) {
-        setIsActive(true);
-        setError(null);
-      }
-    }
-  };
 
   return (
     <div className="flex flex-col items-center justify-center space-y-4">
