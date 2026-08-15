@@ -39,6 +39,7 @@ interface PuterChatOptions {
   stream?: boolean;
   temperature?: number;
   max_tokens?: number;
+  driver?: string;
 }
 
 /**
@@ -65,8 +66,15 @@ export interface PuterMessage {
 /**
  * Centralized Puter model identifier
  * Update this in one place to change the model across the entire application
+ *
+ * Puter model examples from documentation:
+ * - "gpt-4"
+ * - "gpt-5.4-nano" (GPT-5.4 nano model)
+ * - "gemini-3.1-flash-lite"
+ *
+ * Use puterService.listAvailableModels() to see all available models
  */
-export const PUTER_MODEL = 'openai/gpt-5.4-nano';
+export const PUTER_MODEL = 'gpt-5.4-nano';
 
 export interface PuterResponse {
   content: string;
@@ -174,6 +182,30 @@ class PuterServicePrivate {
   }
 
   /**
+   * List available models from Puter
+   * Useful for debugging and finding valid model identifiers
+   */
+  async listAvailableModels(): Promise<string[]> {
+    if (!this.isReady()) {
+      await this.initialize();
+    }
+
+    if (!this.isReady() || !window.puter?.ai?.listModels) {
+      console.warn('[PuterService] Cannot list models - Puter AI not available');
+      return [];
+    }
+
+    try {
+      const models = await window.puter.ai.listModels();
+      console.log('[PuterService] Available models:', models);
+      return models || [];
+    } catch (error) {
+      console.error('[PuterService] Failed to list models:', error);
+      return [];
+    }
+  }
+
+  /**
    * Get initialization state
    */
   getState(): {
@@ -227,6 +259,12 @@ class PuterServicePrivate {
         throw new Error('Puter AI chat function is not available');
       }
 
+      // Build a formatted prompt string that includes system prompt and conversation history
+      // Puter.ai.chat() takes a string prompt, not a messages array
+      const formattedPrompt = this.buildFormattedPrompt(messages);
+
+      console.log('[PuterService] Formatted prompt length:', formattedPrompt.length);
+
       // Prepare Puter chat options
       const chatOptions: PuterChatOptions = {
         model: model,
@@ -240,17 +278,26 @@ class PuterServicePrivate {
         chatOptions.max_tokens = options.maxTokens;
       }
 
-      console.log('[PuterService] Calling Puter AI with full message array...');
+      console.log('[PuterService] Calling Puter AI with formatted prompt...');
 
-      // Call Puter AI with the complete message array
-      // Puter supports the full messages array with system prompt and conversation history
-      const result = await window.puter.ai.chat(messages as PuterChatMessage[], chatOptions);
+      // Call Puter AI with the formatted prompt string
+      // Format: puter.ai.chat(prompt, images, options)
+      const result = await window.puter.ai.chat(formattedPrompt, null, chatOptions);
 
       console.log('[PuterService] Response received from Puter');
 
       // Extract content from Puter's response format
       // Puter returns: { message: { content: string, role: string }, model?: string, ... }
-      const content = result?.message?.content;
+      // Or can use result.toString() to get the content directly
+      let content: string | undefined;
+
+      if (result) {
+        if (typeof result.toString === 'function') {
+          content = result.toString();
+        } else if (result.message?.content) {
+          content = result.message.content;
+        }
+      }
 
       if (!content || typeof content !== 'string') {
         console.error('[PuterService] Invalid response structure:', result);
@@ -278,6 +325,30 @@ class PuterServicePrivate {
   }
 
   /**
+   * Build a formatted prompt string from messages array
+   * This is needed because Puter.ai.chat() takes a string prompt, not a messages array
+   */
+  private buildFormattedPrompt(messages: PuterMessage[]): string {
+    const parts: string[] = [];
+
+    for (const message of messages) {
+      const role = message.role.toUpperCase();
+      const content = message.content.trim();
+
+      if (role === 'SYSTEM') {
+        parts.push(`[SYSTEM INSTRUCTIONS]\n${content}`);
+      } else if (role === 'USER') {
+        parts.push(`[USER]\n${content}`);
+      } else if (role === 'ASSISTANT') {
+        parts.push(`[ASSISTANT]\n${content}`);
+      }
+    }
+
+    // Join with clear separators and add a final prompt for the assistant
+    return parts.join('\n\n---\n\n') + '\n\n[ASSISTANT RESPONSE]';
+  }
+
+  /**
    * Simple chat without full message history
    * Note: This method does not include the system prompt or conversation history
    * For proper JANUARY responses, use generateResponse() instead
@@ -297,9 +368,17 @@ class PuterServicePrivate {
 
     console.log('[PuterService] Simple chat:', message.substring(0, 100));
 
-    const result = await window.puter.ai.chat([{ role: 'user', content: message }], { model });
+    const result = await window.puter.ai.chat(message, null, { model });
 
-    const content = result?.message?.content;
+    let content: string | undefined;
+    if (result) {
+      if (typeof result.toString === 'function') {
+        content = result.toString();
+      } else if (result.message?.content) {
+        content = result.message.content;
+      }
+    }
+
     if (!content || typeof content !== 'string') {
       throw new Error('Puter returned an invalid response');
     }
