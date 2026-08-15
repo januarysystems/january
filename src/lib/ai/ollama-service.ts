@@ -51,14 +51,14 @@ class OllamaServicePrivate {
 
   constructor() {
     // Read from environment variables or use defaults
-    this.baseUrl = this.getBaseUrl();
+    this.baseUrl = this.getBaseUrlFromEnvironment();
     this.defaultModel = this.getModel();
   }
 
   /**
    * Get Ollama base URL from environment or default
    */
-  private getBaseUrl(): string {
+  private getBaseUrlFromEnvironment(): string {
     if (typeof process !== 'undefined' && process.env) {
       return process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
     }

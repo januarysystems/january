@@ -30,7 +30,6 @@ import { januaryAIService } from "@/lib/ai/january-ai-service";
 import { ollamaService } from "@/lib/ai/ollama-service";
 import { voiceService } from "@/lib/ai/voice-service";
 import { createSession, deleteSession, listMessages, listSessions, sendMessage, type ChatMessage, type ChatSession } from "@/lib/api";
-import { useMutation } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_shell/chat")({
   head: () => ({
